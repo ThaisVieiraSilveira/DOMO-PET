@@ -264,7 +264,7 @@ export const CadastroPublico: React.FC = () => {
       }
 
       // Sincronizar com Planilha se configurado
-      const sheetsWebhookUrl = localStorage.getItem('kahu_sheets_url') || '';
+      const sheetsWebhookUrl = localStorage.getItem('domo_sheets_url') || '';
       if (sheetsWebhookUrl) {
         fetch(sheetsWebhookUrl, {
           method: 'POST',
@@ -493,7 +493,7 @@ export const CadastroPublico: React.FC = () => {
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Nome do Pet <span className="text-rose-500">*Obrigatório</span></label>
                 <input
                   type="text"
-                  placeholder="Ex: Kahu"
+                  placeholder="Ex: Pipoca"
                   value={nomePet}
                   onChange={(e) => setNomePet(e.target.value)}
                   className="w-full px-4 py-3.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border-2 border-slate-100 focus:border-slate-300 outline-none rounded-xl font-bold text-slate-700 transition-all text-sm"

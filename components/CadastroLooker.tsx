@@ -541,7 +541,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
 
             // Atualizar também o fallback em local storage
             try {
-              const linksStr = localStorage.getItem('kahu_tutor_links') || '{}';
+              const linksStr = localStorage.getItem('domo_tutor_links') || '{}';
               const links = JSON.parse(linksStr);
               links[token] = {
                 crecheId: user.uid,
@@ -553,7 +553,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
                 criadoEm: createdAt,
                 atualizadoEm: new Date().toISOString()
               };
-              localStorage.setItem('kahu_tutor_links', JSON.stringify(links));
+              localStorage.setItem('domo_tutor_links', JSON.stringify(links));
             } catch (localErr) {
               console.error("Erro ao salvar fallback de tutorAccessLinks no localStorage:", localErr);
             }
@@ -748,7 +748,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
 
       // Fallback para localStorage
       try {
-        const linksStr = localStorage.getItem('kahu_tutor_links') || '{}';
+        const linksStr = localStorage.getItem('domo_tutor_links') || '{}';
         const links = JSON.parse(linksStr);
         links[token] = {
           crecheId: user.uid,
@@ -760,7 +760,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
           criadoEm: pet.tutorAccessCreatedAt || new Date().toISOString(),
           atualizadoEm: new Date().toISOString()
         };
-        localStorage.setItem('kahu_tutor_links', JSON.stringify(links));
+        localStorage.setItem('domo_tutor_links', JSON.stringify(links));
       } catch (localErr) {
         console.error("Erro ao salvar fallback de tutorAccessLinks no localStorage:", localErr);
       }
@@ -1246,16 +1246,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
             <span>Importar planilha</span>
           </button>
 
-          <button 
-            type="button"
-            onClick={() => {
-              setShowDiagnosticModal(true);
-              handleRunDiagnostics();
-            }}
-            className="px-5 py-3.5 bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-200 text-indigo-700 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer active:scale-95"
-          >
-            <span>⚡ Diagnóstico Firebase</span>
-          </button>
+
         </div>
 
         {/* Separator Line */}

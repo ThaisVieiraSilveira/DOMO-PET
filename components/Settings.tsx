@@ -8,10 +8,6 @@ interface SettingsProps {
   medications: Medication[];
   medicationLogs: MedicationLog[];
   hotelStays: HotelStay[];
-  sheetsUrl: string;
-  onSaveSheetsUrl: (url: string) => void;
-  onPushSync: () => Promise<boolean>;
-  onPullSync: () => Promise<boolean>;
   zApiConfig: {
     instanceId: string;
     token: string;
@@ -21,6 +17,7 @@ interface SettingsProps {
 }
 
 const COLOR_OPTIONS = [
+  { value: '#2d512e', name: 'Verde Domo' },
   { value: '#085041', name: 'Floresta Real' },
   { value: '#7F77DD', name: 'Roxo Lavanda' },
   { value: '#D85A30', name: 'Laranja Coral' },
@@ -30,8 +27,7 @@ const COLOR_OPTIONS = [
 ];
 
 const Settings: React.FC<SettingsProps> = ({ 
-  pets, checklists, medications, medicationLogs, hotelStays, sheetsUrl, onSaveSheetsUrl,
-  onPushSync, onPullSync, zApiConfig, onSaveZApi
+  pets, checklists, medications, medicationLogs, hotelStays, zApiConfig, onSaveZApi
 }) => {
 // Navigation Tabs: 'brand' (Ajustes de Marca), 'tech' (Conectividade e Relatórios) or 'activities' (Atividades)
   const [activeTab, setActiveTab] = useState<'brand' | 'tech' | 'activities'>('brand');
@@ -50,7 +46,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [newActivityEmoji, setNewActivityEmoji] = useState('⚽');
 
   useEffect(() => {
-    const stored = localStorage.getItem('kahu_activities');
+    const stored = localStorage.getItem('domo_activities');
     if (stored) {
       try {
         setActivities(JSON.parse(stored));
@@ -76,7 +72,7 @@ const Settings: React.FC<SettingsProps> = ({
         { label: 'Outro', emoji: '✨' }
       ];
       setActivities(defaultList);
-      localStorage.setItem('kahu_activities', JSON.stringify(defaultList));
+      localStorage.setItem('domo_activities', JSON.stringify(defaultList));
     }
   }, []);
 
@@ -93,7 +89,7 @@ const Settings: React.FC<SettingsProps> = ({
     }
     const updated = [...activities, { label, emoji: newActivityEmoji || '✨' }];
     setActivities(updated);
-    localStorage.setItem('kahu_activities', JSON.stringify(updated));
+    localStorage.setItem('domo_activities', JSON.stringify(updated));
     setNewActivityLabel('');
     setNewActivityEmoji('⚽');
   };
@@ -102,7 +98,7 @@ const Settings: React.FC<SettingsProps> = ({
     if (confirm(`Tem certeza que deseja remover a atividade "${labelToDelete}"?`)) {
       const updated = activities.filter(act => act.label !== labelToDelete);
       setActivities(updated);
-      localStorage.setItem('kahu_activities', JSON.stringify(updated));
+      localStorage.setItem('domo_activities', JSON.stringify(updated));
     }
   };
 
@@ -126,7 +122,7 @@ const Settings: React.FC<SettingsProps> = ({
         { label: 'Outro', emoji: '✨' }
       ];
       setActivities(defaultList);
-      localStorage.setItem('kahu_activities', JSON.stringify(defaultList));
+      localStorage.setItem('domo_activities', JSON.stringify(defaultList));
     }
   };
   
@@ -137,7 +133,6 @@ const Settings: React.FC<SettingsProps> = ({
 
   // Technical configuration state
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [localSheetsUrl, setLocalSheetsUrl] = useState(sheetsUrl);
   const [localZApi, setLocalZApi] = useState(zApiConfig);
   const [showScript, setShowScript] = useState(false);
   const [syncing, setSyncing] = useState<'none' | 'push' | 'pull'>('none');
@@ -151,10 +146,6 @@ const Settings: React.FC<SettingsProps> = ({
       setIsLoading(false);
     }
   }, [nome, cor, logo, slogan, tenantLoading]);
-
-  useEffect(() => {
-    setLocalSheetsUrl(sheetsUrl);
-  }, [sheetsUrl]);
 
   useEffect(() => {
     setLocalZApi(zApiConfig);
@@ -207,52 +198,19 @@ const Settings: React.FC<SettingsProps> = ({
     }, 4000);
   };
 
-  // Technical operations copy-pasted & adapted carefully from previous settings file
-  const handleSaveUrl = () => {
-    if (!localSheetsUrl.startsWith('https://script.google.com/')) {
-      alert('⚠️ URL INVÁLIDA!\n\nA URL deve começar com https://script.google.com/...\nCertifique-se de copiar o link em "App da Web" -> "URL".');
-      return;
-    }
-    onSaveSheetsUrl(localSheetsUrl);
-    alert('✅ URL SALVA COM SUCESSO!\n\nAgora o sistema tentará enviar uma mensagem de teste.');
-    handleTestSheets();
-  };
-
-  const handleTestSheets = async () => {
-    if (!localSheetsUrl) return;
-    try {
-      await fetch(localSheetsUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type: 'TESTE_CONEXAO', 
-          data: { 
-            mensagem: 'DOMO está conectado no modo White-Label!', 
-            status: 'Sucesso',
-            aviso: 'Integração está funcionando com nova paleta de cor integrada' 
-          } 
-        })
-      });
-      alert('🚀 TESTE ENVIADO!\n\nVerifique em sua planilha se apareceu uma aba chamada "Log_TESTE_CONEXAO".');
-    } catch (e: any) {
-      alert(`❌ ERRO NA CONEXÃO: ${e.message}\n\nVerifique se você autorizou o acesso no Apps Script.`);
-    }
-  };
-
   const handleSaveZApi = () => {
     onSaveZApi(localZApi.instanceId, localZApi.token, localZApi.clientToken);
     alert('Configurações da Z-API salvas com sucesso!');
   };
 
   const handleReset = async () => {
-    localStorage.removeItem('kahu_checklists');
-    localStorage.removeItem('kahu_master_pets');
-    localStorage.removeItem('kahu_groups');
-    localStorage.removeItem('kahu_medications');
-    localStorage.removeItem('kahu_medication_logs');
-    localStorage.removeItem('kahu_hotel_stays');
-    localStorage.removeItem('kahu_deleted_pets');
+    localStorage.removeItem('domo_checklists');
+    localStorage.removeItem('domo_master_pets');
+    localStorage.removeItem('domo_groups');
+    localStorage.removeItem('domo_medications');
+    localStorage.removeItem('domo_medication_logs');
+    localStorage.removeItem('domo_hotel_stays');
+    localStorage.removeItem('domo_deleted_pets');
     localStorage.removeItem('domo_nome');
     localStorage.removeItem('domo_slogan');
     localStorage.removeItem('domo_cor');
@@ -269,45 +227,6 @@ const Settings: React.FC<SettingsProps> = ({
     alert('Sistema reiniciado com sucesso! Todos os dados e marcas personalizadas foram apagados.');
     window.location.href = '#/';
     window.location.reload();
-  };
-
-  const handlePushSync = async () => {
-    if (!localSheetsUrl) {
-      alert('Configure a URL da planilha primeiro.');
-      return;
-    }
-    setSyncing('push');
-    try {
-      await onPushSync();
-      alert('Dados enviados para a nuvem com sucesso! Agora você pode "Baixar Dados" em outro aparelho.');
-    } catch (e) {
-      alert('Erro ao enviar dados. Verifique a URL e sua conexão.');
-    } finally {
-      setSyncing('none');
-    }
-  };
-
-  const handlePullSync = async () => {
-    if (!localSheetsUrl) {
-      alert('Configure a URL da planilha primeiro.');
-      return;
-    }
-    if (!confirm('Esta ação irá substituir os dados deste aparelho pelos dados salvos na nuvem. Deseja continuar?')) return;
-    
-    setSyncing('pull');
-    try {
-      const success = await onPullSync();
-      if (success) {
-        alert('Dados sincronizados com sucesso!');
-        window.location.reload();
-      } else {
-        alert('Nenhum dado encontrado na nuvem para sincronizar.');
-      }
-    } catch (e) {
-      alert('Erro ao baixar dados. Verifique a URL e se você implantou o novo script corretamente.');
-    } finally {
-      setSyncing('none');
-    }
   };
 
   const exportToCSV = (data: any[], filename: string, headers: string[]) => {
@@ -350,7 +269,7 @@ const Settings: React.FC<SettingsProps> = ({
         'Observações': c.observacoes
       };
     });
-    exportToCSV(data, 'Kahu_Checklists', ['Data', 'Pet', 'Status', 'Alimentação', 'Oferecido', 'Sobrou', 'Água', 'Escore Fecal', 'Observações']);
+    exportToCSV(data, 'Domo_Checklists', ['Data', 'Pet', 'Status', 'Alimentação', 'Oferecido', 'Sobrou', 'Água', 'Escore Fecal', 'Observações']);
   };
 
   const exportMedications = () => {
@@ -368,7 +287,7 @@ const Settings: React.FC<SettingsProps> = ({
         'Notas': l.notes || '-'
       };
     });
-    exportToCSV(data, 'Kahu_Medicacoes', ['Data', 'Pet', 'Medicação', 'Dosagem', 'Horário', 'Oferecido', 'Por', 'Notas']);
+    exportToCSV(data, 'Domo_Medicacoes', ['Data', 'Pet', 'Medicação', 'Dosagem', 'Horário', 'Oferecido', 'Por', 'Notas']);
   };
 
   const exportHotel = () => {
@@ -382,7 +301,7 @@ const Settings: React.FC<SettingsProps> = ({
         'Instruções': s.instructions
       };
     });
-    exportToCSV(data, 'Kahu_Hotel', ['Pet', 'Check-In', 'Check-Out', 'Status', 'Instruções']);
+    exportToCSV(data, 'Domo_Hotel', ['Pet', 'Check-In', 'Check-Out', 'Status', 'Instruções']);
   };
 
   const exportConsolidatedReport = () => {
@@ -429,7 +348,7 @@ const Settings: React.FC<SettingsProps> = ({
     });
 
     data.sort((a, b) => new Date(b['Data/Hora']).getTime() - new Date(a['Data/Hora']).getTime());
-    exportToCSV(data, 'Kahu_Relatorio_Consolidado', ['Data/Hora', 'Pet', 'Tipo', 'Evento', 'Detalhes']);
+    exportToCSV(data, 'Domo_Relatorio_Consolidado', ['Data/Hora', 'Pet', 'Tipo', 'Evento', 'Detalhes']);
   };
 
   if (isLoading) {
@@ -836,114 +755,22 @@ const Settings: React.FC<SettingsProps> = ({
         {/* Tech Configuration Tab (WhatsApp, Sheets, Database ops, Exports) */}
         {activeTab === 'tech' && (
           <div className="bg-white rounded-[45px] p-8 border border-slate-100 shadow-xl space-y-8">
-            {/* Alerta de Recuperação de Dados */}
-            <section className="bg-rose-50 border-2 border-rose-100 p-6 rounded-[35px] space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">🆘</span>
-                <h4 className="text-rose-900 font-black uppercase text-sm">Sumiu seus dados?</h4>
-              </div>
-              <p className="text-rose-700 text-xs font-bold leading-tight">
-                Se você trocou de celular ou limpou o histórico e seus pets sumiram, siga isto:
-              </p>
-              <ol className="text-rose-600 text-[10px] font-bold list-decimal list-inside space-y-1">
-                <li>Insira a URL da sua planilha no campo abaixo.</li>
-                <li>Role a tela e clique em "BAIXAR DADOS" na seção indigo.</li>
-              </ol>
-            </section>
-
+            {/* Firebase Realtime Sync Info */}
             <section className="space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Sincronização entre Dispositivos</h3>
-              <div className="bg-indigo-50 p-6 rounded-[35px] border border-indigo-100 space-y-4">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Sincronização em Tempo Real</h3>
+              <div className="bg-emerald-50 p-8 rounded-[35px] border border-emerald-100 space-y-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">☁️</span>
-                  <p className="text-xs font-bold text-indigo-800">
-                    Use estes botões para manter celular e computador com os mesmos dados.
-                  </p>
+                  <span className="text-3xl">🔥</span>
+                  <h4 className="text-[#085041] font-black uppercase text-sm">Firebase Sincronizado</h4>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button 
-                    onClick={handlePushSync}
-                    disabled={syncing !== 'none'}
-                    className={`py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-widest flex flex-col items-center justify-center gap-2 transition-all shadow-lg ${
-                      syncing === 'push' ? 'bg-slate-200 text-slate-400 transform scale-95' : 'bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700 active:scale-95'
-                    }`}
-                  >
-                    <span className="text-2xl">{syncing === 'push' ? '⏳' : '📤'}</span>
-                    {syncing === 'push' ? 'Enviando...' : 'Enviar para Nuvem'}
-                  </button>
-                  
-                  <button 
-                    onClick={handlePullSync}
-                    disabled={syncing !== 'none'}
-                    className={`py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-widest flex flex-col items-center justify-center gap-2 transition-all shadow-lg ${
-                      syncing === 'pull' ? 'bg-slate-200 text-slate-400 transform scale-95' : 'bg-white border-2 border-indigo-100 text-indigo-600 shadow-indigo-50 hover:bg-indigo-50 active:scale-95'
-                    }`}
-                  >
-                    <span className="text-2xl">{syncing === 'pull' ? '⏳' : '📥'}</span>
-                    {syncing === 'pull' ? 'Baixar da Nuvem' : 'Baixar Dados'}
-                  </button>
-                </div>
-                <p className="text-[9px] font-bold text-indigo-400 text-center italic">
-                  Atenção: Sempre clique em "Enviar" quando terminar o trabalho em um aparelho e em "Baixar" ao começar em outro.
+                <p className="text-emerald-800 text-xs font-semibold leading-relaxed">
+                  Seus dados de Pets, Checklists, Atividades, Grupos, Diário e Hospedagens estão sendo sincronizados automaticamente em tempo real com o banco de dados seguro do Firebase.
                 </p>
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Sincronização em Tempo Real (Google Sheets)</h3>
-              <div className="bg-emerald-50 p-6 rounded-[35px] border border-emerald-100 space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">⚡</span>
-                  <p className="text-xs font-bold text-emerald-800">
-                    Configure um Webhook para enviar dados automaticamente para o Google Sheets sempre que salvar um registro.
-                  </p>
+                <div className="text-[10px] text-emerald-700 font-medium space-y-1">
+                  <p>✅ <strong>Nuvem Ativa:</strong> Todas as alterações feitas por você refletem instantaneamente em todos os seus dispositivos.</p>
+                  <p>✅ <strong>Sem Perda de Dados:</strong> Mesmo que você limpe o navegador, seus dados estarão salvos em segurança.</p>
+                  <p>✅ <strong>Multi-dispositivo:</strong> Celulares, computadores e tablets compartilham a mesma base automaticamente.</p>
                 </div>
-                
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-2">URL do Web App (Google Apps Script)</label>
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      value={localSheetsUrl}
-                      onChange={(e) => setLocalSheetsUrl(e.target.value.trim())}
-                      placeholder="https://script.google.com/macros/s/.../exec"
-                      className="flex-1 p-4 bg-white border-2 border-emerald-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-emerald-300 shadow-sm"
-                    />
-                    <button 
-                      onClick={handleSaveUrl}
-                      className="px-6 bg-[#085041] hover:bg-emerald-800 text-white font-black rounded-2xl shadow-lg transition-all active:scale-95"
-                    >
-                      SALVAR
-                    </button>
-                  </div>
-                  <button 
-                    onClick={handleTestSheets}
-                    className="w-full py-2 bg-white border-2 border-emerald-100 text-[#085041] font-bold rounded-xl hover:bg-emerald-50 transition-all text-[10px] uppercase tracking-widest"
-                  >
-                    🧪 Testar Conexão
-                  </button>
-                </div>
-
-                <button 
-                  onClick={() => setShowScript(!showScript)}
-                  className="text-[10px] font-black text-emerald-800 underline decoration-2 underline-offset-4 uppercase tracking-widest"
-                >
-                  {showScript ? 'Ocultar Instruções' : 'Como configurar o Google Sheets?'}
-                </button>
-
-                {showScript && (
-                  <div className="bg-white p-6 rounded-[25px] border border-emerald-100 space-y-4 animate-in slide-in-from-top-2">
-                    <div className="space-y-3">
-                      <p className="text-[12px] font-black text-slate-800">COMO CONECTAR (Siga cada passo):</p>
-                      <p className="text-[11px] font-bold text-slate-600">1. Vá no Google Sheets {'>'} Extensões {'>'} Apps Script.</p>
-                      <p className="text-[11px] font-bold text-slate-600">2. Apague tudo e cole o código que você encontra no script.</p>
-                      <p className="text-[11px] font-bold text-slate-600">3. Clique em "Implantar" (botão azul) {'>'} "Nova Implantação".</p>
-                      <p className="text-[11px] font-bold text-slate-600">4. Em "Quem pode acessar", selecione <span className="text-rose-600 font-extrabold uppercase underline">Qualquer Pessoa</span> (Isso é obrigatório!).</p>
-                      <p className="text-[11px] font-bold text-[#085041]">5. Clique em Implantar. Se pedir para autorizar, configure as permissões da conta do Google.</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </section>
 
@@ -1005,7 +832,7 @@ const Settings: React.FC<SettingsProps> = ({
             </section>
 
             <section className="space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Relatórios para Google Sheets (Manual)</h3>
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Exportar Relatórios locais (CSV)</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button 
                   onClick={exportChecklists}

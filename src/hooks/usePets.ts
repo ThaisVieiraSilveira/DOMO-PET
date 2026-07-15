@@ -6,7 +6,7 @@ import { Pet } from '../../types';
 import { fetchPets } from '../../services/api';
 
 const LOCAL_STORAGE_KEYS = {
-  pets: 'kahu_master_pets',
+  pets: 'domo_master_pets',
 };
 
 export function usePets() {
@@ -213,10 +213,10 @@ export function usePets() {
       localStorage.setItem(LOCAL_STORAGE_KEYS.pets, JSON.stringify(updatedPets));
       
       // Keep track of deleted items to sync if needed for legacy components
-      const storedDeleted = localStorage.getItem('kahu_deleted_pets');
+      const storedDeleted = localStorage.getItem('domo_deleted_pets');
       const deletedIds: string[] = storedDeleted ? JSON.parse(storedDeleted) : [];
       if (!deletedIds.includes(petId)) {
-        localStorage.setItem('kahu_deleted_pets', JSON.stringify([...deletedIds, petId]));
+        localStorage.setItem('domo_deleted_pets', JSON.stringify([...deletedIds, petId]));
       }
     } catch (e) {
       console.error(e);

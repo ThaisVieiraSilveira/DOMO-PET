@@ -163,7 +163,7 @@ const Login: React.FC = () => {
 
         <div className="mt-8 pt-6 border-t border-slate-100 text-center space-y-4">
           <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
-            © {new Date().getFullYear()} DOMO • Gestão Veterinária
+            © {new Date().getFullYear()} DOMO • Sistema Pet
           </p>
         </div>
       </div>

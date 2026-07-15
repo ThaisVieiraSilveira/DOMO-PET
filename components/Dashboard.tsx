@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pet, ChecklistEntry, PetGroup, Medication, MedicationLog, HotelStay } from '../types';
 import { useTenant } from '../src/hooks/useTenant';
+import { useHotel } from '../src/hooks/useHotel';
 import { collection, query, where, onSnapshot, doc, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth, storage, isFirebaseConfigured } from '../src/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -13,7 +14,7 @@ import {
   Activity, Clock, Settings, Search, Building2, Download, 
   Upload, PlusCircle, Check, Flame, Cake, RefreshCw, 
   Users, CheckSquare, Info, X, Zap, Heart, ShieldAlert, ChevronRight, Share2, Copy,
-  Camera
+  Camera, CalendarX
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -25,12 +26,7 @@ interface DashboardProps {
   hotelStays?: HotelStay[];
   onSaveMedicationLog?: (log: MedicationLog) => void;
   onUpdatePet: (pet: Pet) => void;
-  onPullSync: () => Promise<boolean>;
-  onPushSync: () => Promise<boolean>;
   onSaveChecklist: (entry: ChecklistEntry) => void;
-  lastSync?: string;
-  isSyncing?: boolean;
-  sheetsWebhookUrl?: string;
   zApiConfig?: {
     instanceId: string;
     token: string;
@@ -44,10 +40,12 @@ const Dashboard: React.FC<DashboardProps> = ({
   medicationLogs = [], 
   hotelStays = [], 
   onSaveMedicationLog,
-  onUpdatePet, onPullSync, onPushSync, 
-  onSaveChecklist, lastSync, isSyncing, sheetsWebhookUrl, zApiConfig 
+  onUpdatePet, 
+  onSaveChecklist, zApiConfig 
 }) => {
   const navigate = useNavigate();
+  const { stays: syncedHotelStays } = useHotel();
+  const hotelStaysToUse = syncedHotelStays && syncedHotelStays.length > 0 ? syncedHotelStays : (hotelStays || []);
   
   const { nome: domoNome, cor: domoCor, logo: domoLogo } = useTenant();
   
@@ -99,7 +97,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [activitiesList, setActivitiesList] = useState<{ label: string, emoji: string }[]>([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem('kahu_activities');
+    const stored = localStorage.getItem('domo_activities');
     if (stored) {
       try {
         setActivitiesList(JSON.parse(stored));
@@ -125,7 +123,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         { label: 'Outro', emoji: '✨' }
       ];
       setActivitiesList(defaultList);
-      localStorage.setItem('kahu_activities', JSON.stringify(defaultList));
+      localStorage.setItem('domo_activities', JSON.stringify(defaultList));
     }
   }, [showBatchActivityModal]);
 
@@ -254,9 +252,9 @@ const Dashboard: React.FC<DashboardProps> = ({
     if (onSaveMedicationLog) {
       onSaveMedicationLog(log);
     } else {
-      const stored = JSON.parse(localStorage.getItem('kahu_medication_logs') || '[]');
+      const stored = JSON.parse(localStorage.getItem('domo_medication_logs') || '[]');
       stored.push(log);
-      localStorage.setItem('kahu_medication_logs', JSON.stringify(stored));
+      localStorage.setItem('domo_medication_logs', JSON.stringify(stored));
     }
 
     // Trigger green success notification immediately!
@@ -481,11 +479,11 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // Check if a pet is actively staying in the hotel today
   const isPetInHotelToday = (petId: string) => {
-    return (hotelStays || []).some(stay => 
+    return (hotelStaysToUse || []).some(stay => 
       stay.petId === petId && 
-      stay.active && 
-      searchDate >= stay.checkIn && 
-      searchDate <= stay.checkOut
+      (stay.active || stay.status === 'ativa') && 
+      searchDate >= (stay.checkInDate || stay.checkIn) && 
+      searchDate <= (stay.expectedCheckOutDate || stay.checkOut)
     );
   };
 
@@ -500,7 +498,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         return matchesDay && matchesSearch && matchesHotelFilter;
       })
       .sort((a, b) => (a.pet_nome || '').localeCompare(b.pet_nome || ''));
-  }, [pets, selectedDay, searchTerm, showHotelOnly, hotelStays, searchDate]);
+  }, [pets, selectedDay, searchTerm, showHotelOnly, hotelStaysToUse, searchDate]);
 
   const checklistsForDate = useMemo(() => checklists.filter(c => c.date === searchDate), [checklists, searchDate]);
   
@@ -552,7 +550,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     }> = [];
 
     // 1. Hotel departures today
-    const departuresToday = (hotelStays || []).filter(stay => stay.active && stay.checkOut === searchDate);
+    const departuresToday = (hotelStaysToUse || []).filter(stay => (stay.active || stay.status === 'ativa') && (stay.expectedCheckOutDate || stay.checkOut) === searchDate);
     departuresToday.forEach(stay => {
       const p = pets.find(x => x.id === stay.petId);
       if (p) {
@@ -680,7 +678,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     });
 
     return alerts;
-  }, [hotelStays, searchDate, checklistsForDate, filteredPets, medications, medicationLogs, pendentes, selectedDay]);
+  }, [hotelStaysToUse, searchDate, checklistsForDate, filteredPets, medications, medicationLogs, pendentes, selectedDay]);
 
   // Day Stats Overview variables
   const countPresent = filteredPets.length;
@@ -691,7 +689,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const countInHotel = useMemo(() => {
     return filteredPets.filter(p => isPetInHotelToday(p.id)).length;
-  }, [filteredPets, hotelStays, searchDate]);
+  }, [filteredPets, hotelStaysToUse, searchDate]);
 
   // Actions trigger helpers
   const handleAddToDay = (pet: Pet) => {
@@ -716,35 +714,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       dia_semana: currentDays.filter(d => d !== selectedDay).join(', ')
     };
     onUpdatePet(updatedPet);
-  };
-
-  const handlePullSync = async () => {
-    setSyncing('pull');
-    try {
-      const success = await onPullSync();
-      if (success) {
-        alert('Dados atualizados com sucesso!');
-        window.location.reload();
-      } else {
-        alert('Nenhum dado novo na nuvem.');
-      }
-    } catch (e) {
-      alert('Certifique-se que a URL da planilha está correta nos Ajustes.');
-    } finally {
-      setSyncing('none');
-    }
-  };
-
-  const handlePushSync = async () => {
-    setSyncing('push');
-    try {
-      await onPushSync();
-      alert('Dados salvos na nuvem com sucesso!');
-    } catch (e) {
-      alert('Erro ao salvar na nuvem.');
-    } finally {
-      setSyncing('none');
-    }
   };
 
   // Direct fast save feeding
@@ -876,7 +845,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Execute Batch Activity saving action
   const handleBatchActivitySaveExecution = async () => {
     if (!batchActivityResponsavel.trim()) {
-      return alert('O nome do responsável é obrigatório.');
+      return alert('O nome do cuidador é obrigatório.');
     }
     if (batchActivitySelectedPets.length === 0) {
       return alert('Selecione ao menos um pet para registrar a atividade.');
@@ -998,7 +967,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
 
         // Save to localStorage for robust offline fallback & synchronicity
-        const localTimelineKey = `kahu_timeline_${petId}`;
+        const localTimelineKey = `domo_timeline_${petId}`;
         const localTimelineStr = localStorage.getItem(localTimelineKey) || '[]';
         const localTimeline = JSON.parse(localTimelineStr);
         localTimeline.unshift({
@@ -1015,7 +984,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         localStorage.setItem(localTimelineKey, JSON.stringify(localTimeline));
 
         if (uploadedImageUrl) {
-          const localMomentsKey = `kahu_moments_${petId}`;
+          const localMomentsKey = `domo_moments_${petId}`;
           const localMomentsStr = localStorage.getItem(localMomentsKey) || '[]';
           const localMoments = JSON.parse(localMomentsStr);
           localMoments.unshift({
@@ -1060,7 +1029,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       return alert('Por favor, faça upload de uma foto.');
     }
     if (!momentResponsavel.trim()) {
-      return alert('Por favor, informe o responsável.');
+      return alert('Por favor, informe o nome do cuidador.');
     }
 
     setSavingMoment(true);
@@ -1129,7 +1098,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
 
         // Local storage fallback
-        const localTimelineKey = `kahu_timeline_${petId}`;
+        const localTimelineKey = `domo_timeline_${petId}`;
         const localTimelineStr = localStorage.getItem(localTimelineKey) || '[]';
         const localTimeline = JSON.parse(localTimelineStr);
         localTimeline.unshift({
@@ -1144,7 +1113,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         });
         localStorage.setItem(localTimelineKey, JSON.stringify(localTimeline));
 
-        const localMomentsKey = `kahu_moments_${petId}`;
+        const localMomentsKey = `domo_moments_${petId}`;
         const localMomentsStr = localStorage.getItem(localMomentsKey) || '[]';
         const localMoments = JSON.parse(localMomentsStr);
         localMoments.unshift({
@@ -1321,11 +1290,9 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="flex flex-wrap items-center gap-2 mt-4">
                 <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">ATIVOS: 0</span>
                 <span className="bg-indigo-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">ESCALA: Nenhuma</span>
-                {lastSync && (
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 cursor-pointer hover:text-emerald-600 transition-all flex items-center gap-1">
-                    <span>☁️</span> Último sync: {lastSync}
-                  </p>
-                )}
+                <span className="bg-[#085041] text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm flex items-center gap-1">
+                  <span>🔥</span> Firebase Ativo
+                </span>
               </div>
             </div>
             
@@ -1562,31 +1529,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* WEBHOOK ALERTS */}
-      {!sheetsWebhookUrl && (
-        <div className="bg-gradient-to-r from-[#faf7f2] via-[#f5efe4] to-[#fcfaf5] border border-amber-250/60 p-6 rounded-[28px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 shadow-md hover:shadow-lg transition-all">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 animate-pulse">
-              ☁️
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="bg-amber-600/10 text-amber-700 text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest border border-amber-500/10">AVISO DE BACKUP</span>
-                <span className="text-amber-600 font-bold text-[10px]">RECOMENDADO</span>
-              </div>
-              <h4 className="text-slate-800 font-extrabold text-sm tracking-tight mt-1">Armazenamento em Nuvem Desativado</h4>
-              <p className="text-slate-500 text-[11px] font-semibold leading-relaxed mt-0.5">Cadastre o link do seu Google Sheets nos Ajustes para fazer backup automático e garantir total segurança.</p>
-            </div>
-          </div>
-          <button 
-            type="button"
-            onClick={() => navigate('/settings')}
-            className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-102 transition-all shadow-md shadow-amber-600/10 active:scale-95 flex-shrink-0"
-          >
-            Configurar Backup
-          </button>
-        </div>
-      )}
+
 
       {/* HEADER SECTION WITH INTEGRATED RECOVERY AND CONTROLS */}
       <div className="bg-white rounded-[40px] p-8 sm:p-10 border border-emerald-100/40 shadow-xl relative overflow-visible">
@@ -1613,11 +1556,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex flex-wrap items-center gap-3 mt-6">
               <span className="bg-emerald-500 text-white px-4 py-2 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider shadow-sm">ATIVOS: {pets.length}</span>
               <span className="bg-indigo-500 text-white px-4 py-2 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider shadow-sm">Escala hoje ({selectedDay}): {filteredPets.length} cães</span>
-              {lastSync && (
-                <p className="text-xs sm:text-sm font-black text-slate-500 uppercase tracking-wider ml-1 cursor-pointer hover:text-emerald-600 transition-all flex items-center gap-1.5">
-                  <span>☁️</span> Último sync: {lastSync}
-                </p>
-              )}
+              <span className="bg-[#085041] text-white px-4 py-2 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                <span>🔥</span> Firebase Ativo
+              </span>
             </div>
           </div>
           
@@ -2157,7 +2098,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             onClick={() => {
               setBatchActivitySelectedPets([]);
               
-              const stored = localStorage.getItem('kahu_activities');
+              const stored = localStorage.getItem('domo_activities');
               let defaultAct = 'Piscina';
               if (stored) {
                 try {
@@ -2210,10 +2151,16 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* MAIN PET CARDS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7 pb-20 w-full max-w-[1440px] mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-16 w-full max-w-[1440px] mx-auto">
         {filteredPets.map((pet, index) => {
           const status = getPetStatus(pet.id);
           const isHotel = isPetInHotelToday(pet.id);
+          const activeStay = isHotel ? (hotelStaysToUse || []).find(stay => 
+            stay.petId === pet.id && 
+            (stay.active || stay.status === 'ativa') &&
+            searchDate >= (stay.checkInDate || stay.checkIn) && 
+            searchDate <= (stay.expectedCheckOutDate || stay.checkOut)
+          ) : undefined;
           const isBday = getDeterministicBirthday(pet, searchDate);
           const hasAnyTags = (pet.alertas_importantes && pet.alertas_importantes.length > 0) || 
                              (pet.perfil_comportamental && pet.perfil_comportamental.length > 0) ||
@@ -2223,28 +2170,36 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div 
               key={pet.id}
               onClick={() => navigate(`/pet/${pet.id}?date=${searchDate}`)}
-              className="bg-white p-6 sm:p-8 rounded-[40px] border border-slate-100 shadow-md hover:shadow-2xl hover:-translate-y-1.5 transition-all cursor-pointer flex flex-col h-full justify-between group relative overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300 min-w-[320px] sm:min-w-[380px]"
+              className={`p-4 sm:p-5 rounded-3xl border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer flex flex-col h-full justify-between group relative overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300 min-w-0 w-full ${
+                isHotel 
+                  ? 'bg-gradient-to-br from-indigo-50/35 via-white to-white border-indigo-200 ring-2 ring-indigo-500/5' 
+                  : 'bg-white border-slate-150'
+              }`}
               style={{ contentVisibility: 'auto' }}
             >
               {/* Highlight ribbon based on events */}
               {isHotel && (
-                <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-700 to-indigo-500 text-white px-4 py-2 rounded-bl-2xl font-black text-[11px] uppercase tracking-widest shadow-sm z-10 flex items-center gap-1">
+                <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-700 to-indigo-500 text-white px-3 py-1.5 rounded-bl-xl font-black text-[10px] uppercase tracking-widest shadow-sm z-10 flex items-center gap-1">
                   <span>🏨 HOJE NO HOTEL</span>
                 </div>
               )}
               {isBday && (
-                <div className="absolute top-0 right-0 bg-gradient-to-l from-pink-500 to-rose-500 text-white px-4 py-2 rounded-bl-2xl font-black text-[11px] uppercase tracking-widest shadow-sm z-10 flex items-center gap-1">
+                <div className="absolute top-0 right-0 bg-gradient-to-l from-pink-500 to-rose-500 text-white px-3 py-1.5 rounded-bl-xl font-black text-[10px] uppercase tracking-widest shadow-sm z-10 flex items-center gap-1">
                   <span>🎂 ANIVERSÁRIO HOJE</span>
                 </div>
               )}
 
-              <div className="absolute top-0 left-0 bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 px-4 py-2.5 rounded-br-[18px] font-black text-[12px] border-r border-b border-slate-100 z-10">
+              <div className="absolute top-0 left-0 bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 px-3 py-2 rounded-br-xl font-black text-[11px] border-r border-b border-slate-100 z-10">
                 #{index + 1}
               </div>
 
-              <div className="flex justify-between items-start gap-4 mb-6 mt-4">
-                <div className="flex gap-4.5 min-w-0 flex-1">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50/60 rounded-[22px] flex items-center justify-center text-4xl shadow-inner border border-white group-hover:scale-105 transition-transform flex-shrink-0 overflow-hidden">
+              <div className="flex justify-between items-start gap-3 mb-4 mt-3">
+                <div className="flex gap-3 min-w-0 flex-1">
+                  <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-3xl shadow-inner border group-hover:scale-105 transition-transform flex-shrink-0 overflow-hidden ${
+                    isHotel 
+                      ? 'bg-indigo-50/60 border-indigo-200 ring-2 ring-indigo-500/10' 
+                      : 'bg-emerald-50/60 border-white'
+                  }`}>
                     {pet.foto ? (
                       <img src={pet.foto} alt={pet.pet_nome} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
@@ -2252,50 +2207,56 @@ const Dashboard: React.FC<DashboardProps> = ({
                     )}
                   </div>
                   <div className="min-w-0 flex-1 text-left">
-                    <h4 className="font-black text-xl sm:text-2xl text-slate-800 group-hover:text-emerald-700 leading-tight flex items-center gap-1.5 mt-0.5 truncate" title={pet.pet_nome}>
-                      {pet.pet_nome}
+                    <h4 className="font-black text-base sm:text-lg text-slate-800 group-hover:text-emerald-700 leading-tight flex items-center flex-wrap gap-1.5 mt-0.5" title={pet.pet_nome}>
+                      <span className="truncate max-w-[150px]">{pet.pet_nome}</span>
+                      {isHotel && (
+                        <span className="inline-flex items-center text-[8px] bg-indigo-600 text-white font-black px-1.5 py-0.5 rounded-md leading-none gap-0.5 uppercase tracking-wider">
+                          <span>🏨</span> HOTEL
+                        </span>
+                      )}
                     </h4>
                     {pet.tutor_nome && (
-                      <p className="text-xs sm:text-sm font-black text-emerald-750 uppercase tracking-wide leading-snug mt-1.5" title={pet.tutor_nome}>
+                      <p className="text-[11px] sm:text-xs font-black text-emerald-750 uppercase tracking-wide leading-tight mt-1 line-clamp-2 overflow-hidden text-ellipsis" title={pet.tutor_nome}>
                         👤 {pet.tutor_nome}
                       </p>
                     )}
-                    <p className="text-[11px] sm:text-[12px] font-extrabold text-slate-400 uppercase tracking-wide mt-1.5 truncate" title={`${pet.id} • ${pet.raca || 'Mestiço'}`}>
+                    <p className="text-[10px] sm:text-[11px] font-extrabold text-slate-400 uppercase tracking-wide mt-1 truncate" title={`${pet.id} • ${pet.raca || 'Mestiço'}`}>
                       {pet.id} • {pet.raca || 'Mestiço'}
                     </p>
                   </div>
                 </div>
 
-                <div className="relative flex items-center gap-2">
-                  {selectedDay !== 'Todos' && (
-                    <button 
-                      type="button"
-                      onClick={(e) => handleRemoveFromDay(e, pet)}
-                      className="w-9 h-9 rounded-full bg-rose-50 text-rose-450 hover:bg-rose-500 hover:text-white flex items-center justify-center border border-white transition-all shadow-sm"
-                      title="Excluir da escala de hoje"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
+                <div className="relative flex flex-col items-end gap-1.5 shrink-0">
                   <div 
-                    className={`w-9 h-9 rounded-full flex items-center justify-center text-lg shadow-sm border-2 border-white transition-all ${
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-base sm:text-lg shadow-sm border-2 border-white transition-all ${
                       status === 'Pendente' ? 'bg-slate-50 text-slate-300' : getStatusColor(status) + ' text-white'
                     }`}
                   >
                     {getStatusEmoji(status)}
                   </div>
+                  {selectedDay !== 'Todos' && (
+                    <button 
+                      type="button"
+                      onClick={(e) => handleRemoveFromDay(e, pet)}
+                      className="px-2 py-1 rounded-lg bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-250 transition-all shadow-sm flex items-center gap-1 text-[9px] font-black uppercase tracking-wider whitespace-nowrap"
+                      title="Remover este pet da escala de hoje"
+                    >
+                      <CalendarX className="w-3 h-3 shrink-0 text-rose-500" />
+                      <span>Remover</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* QUICK INDIVIDUAL ACTION BUTTONS */}
-              <div className="grid grid-cols-4 gap-2 mb-6" onClick={(e) => e.stopPropagation()}>
+              <div className="grid grid-cols-4 gap-1 sm:gap-1.5 mb-4" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setBatchActivitySelectedPets([pet.id]);
                     
-                    const stored = localStorage.getItem('kahu_activities');
+                    const stored = localStorage.getItem('domo_activities');
                     let defaultAct = 'Piscina';
                     if (stored) {
                       try {
@@ -2321,9 +2282,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                     setBatchActivityFilePreview(null);
                     setShowBatchActivityModal(true);
                   }}
-                  className="py-3.5 sm:py-4 px-2 rounded-2xl bg-indigo-50 border-2 border-indigo-100 hover:bg-indigo-100/75 hover:border-indigo-200 transition-all text-xs sm:text-[13px] font-black uppercase text-indigo-800 flex items-center justify-center gap-1 shadow-sm active:scale-95 cursor-pointer"
+                  className="py-2 sm:py-2.5 px-0.5 rounded-xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100/70 transition-all text-[11px] font-black uppercase text-indigo-850 flex items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
+                  title="Registrar Atividade"
                 >
-                  ⚽ Ativ.
+                  <span>⚽</span> <span className="truncate">ATIV.</span>
                 </button>
                 <button
                   type="button"
@@ -2332,9 +2294,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                     setMedsFilterPetId(pet.id);
                     setShowMedicationsModal(true);
                   }}
-                  className="py-3.5 sm:py-4 px-2 rounded-2xl bg-rose-50 border-2 border-rose-100 hover:bg-rose-100/75 hover:border-rose-200 transition-all text-xs sm:text-[13px] font-black uppercase text-rose-800 flex items-center justify-center gap-1 shadow-sm active:scale-95 cursor-pointer"
+                  className="py-2 sm:py-2.5 px-0.5 rounded-xl bg-rose-50 border border-rose-100 hover:bg-rose-100/70 transition-all text-[11px] font-black uppercase text-rose-850 flex items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
+                  title="Registrar Medicação"
                 >
-                  💊 Med.
+                  <span>💊</span> <span className="truncate">MED.</span>
                 </button>
                 <button
                   type="button"
@@ -2354,9 +2317,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                     setMomentSearchTerm('');
                     setShowMomentModal(true);
                   }}
-                  className="py-3.5 sm:py-4 px-2 rounded-2xl bg-purple-50 border-2 border-purple-100 hover:bg-purple-100/75 hover:border-purple-200 transition-all text-xs sm:text-[13px] font-black uppercase text-purple-800 flex items-center justify-center gap-1 shadow-sm active:scale-95 cursor-pointer"
+                  className="py-2 sm:py-2.5 px-0.5 rounded-xl bg-purple-50 border border-purple-100 hover:bg-purple-100/70 transition-all text-[11px] font-black uppercase text-purple-850 flex items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
+                  title="Registrar Foto"
                 >
-                  📸 Foto
+                  <span>📸</span> <span className="truncate">FOTO</span>
                 </button>
                 <button
                   type="button"
@@ -2364,81 +2328,100 @@ const Dashboard: React.FC<DashboardProps> = ({
                     e.stopPropagation();
                     setSelectedTutorPet(pet);
                   }}
-                  className="py-3.5 sm:py-4 px-2 rounded-2xl bg-amber-50 border-2 border-amber-100 hover:bg-amber-100/75 hover:border-amber-200 transition-all text-xs sm:text-[13px] font-black uppercase text-amber-800 flex items-center justify-center gap-1 shadow-sm active:scale-95 cursor-pointer"
+                  className="py-2 sm:py-2.5 px-0.5 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100/70 transition-all text-[11px] font-black uppercase text-amber-850 flex items-center justify-center gap-0.5 shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
+                  title="Ver Dados do Tutor"
                 >
-                  👤 Tutor
+                  <span>👤</span> <span className="truncate">TUTOR</span>
                 </button>
               </div>
 
               {/* CARD ALIMENTATION CONTROLS WITH GRACEFUL GRADIENTS */}
-              <div className="bg-slate-50 p-5 rounded-[32px] border border-slate-100 mt-auto space-y-4">
-                <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-150 mt-auto space-y-3">
+                <div className="space-y-2.5" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs sm:text-[13px] font-black text-emerald-800 uppercase tracking-wider">Alimentação Rápida</span>
+                    <span className="text-[11px] sm:text-xs font-black text-emerald-850 uppercase tracking-wider">Alimentação Rápida</span>
                     <button 
                       type="button"
                       onClick={(e) => handleQuickSave(e, pet.id)}
                       disabled={savingId === pet.id}
-                      className={`px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl text-xs sm:text-[13px] font-black uppercase tracking-wider transition-all shadow-md active:scale-95 ${
+                      className={`px-4 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all shadow-xs active:scale-95 ${
                         savingId === pet.id 
                           ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
                           : savedId === pet.id
-                            ? 'bg-emerald-100 text-emerald-800 border-2 border-emerald-300'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-[1.02] hover:shadow-lg border-b-[3px] border-emerald-800'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-[1.01] hover:shadow-md border-b-2 border-emerald-800'
                       }`}
                     >
                       {savingId === pet.id ? '⏳' : savedId === pet.id ? 'Salvo! ✔️' : 'Salvar'}
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  {activeStay && (
+                    <div className="bg-indigo-50/70 border border-indigo-150 p-2.5 rounded-2xl text-[10px] text-indigo-950 font-semibold space-y-1 my-1">
+                      <div className="flex justify-between font-black uppercase text-[8px] text-indigo-600 tracking-widest leading-none mb-1">
+                        <span>🏨 CRONOGRAMA HOTEL</span>
+                        <span>{activeStay.feedingTimesPerDay}x ao dia</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs">
+                        <span>🥣</span>
+                        <span><strong>Refeições:</strong> {activeStay.feedingSchedule?.join(' e ') || 'Não configurado'}</span>
+                      </div>
+                      {activeStay.feedingNotes && (
+                        <div className="text-[9px] text-slate-500 italic mt-0.5">
+                          Obs: {activeStay.feedingNotes}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-1.5">
                     {[
                       { label: 'Comeu tudo', internal: 'Comeu tudo', emoji: '😋' },
                       { label: 'Comeu metade', internal: 'Comeu metade', emoji: '😐' },
-                      { label: 'Menos que metade', internal: 'Comeu menos da metade', emoji: '😕' },
+                      { label: 'Menos metade', internal: 'Comeu menos da metade', emoji: '😕' },
                       { label: 'Não comeu', internal: 'Não comeu', emoji: '🔴' }
                     ].map(opt => (
                       <button
                         key={opt.label}
                         type="button"
                         onClick={() => setQuickEntries(prev => ({ ...prev, [pet.id]: opt.internal as any }))}
-                        className={`py-3 sm:py-3.5 px-1.5 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-tighter border-2 transition-all flex items-center justify-center gap-1 active:scale-95 ${
+                        className={`py-2 px-1 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-tight border transition-all flex items-center justify-center gap-1 active:scale-95 ${
                           quickEntries[pet.id] === opt.internal 
-                            ? 'bg-emerald-500 text-white border-emerald-600 shadow-md scale-[1.02]' 
-                            : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300 hover:text-slate-700 shadow-sm'
+                            ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs scale-[1.01]' 
+                            : 'bg-white text-slate-500 border-slate-100 hover:border-slate-200 hover:text-slate-700 shadow-xs'
                         }`}
                       >
-                        <span className="text-sm">{opt.emoji}</span>
-                        {opt.label}
+                        <span className="text-xs">{opt.emoji}</span>
+                        <span className="truncate">{opt.label}</span>
                       </button>
                     ))}
                   </div>
 
-                  <div className="mt-2.5">
+                  <div className="mt-1.5">
                     <input 
                       type="text"
-                      placeholder="Observação rápida (opcional)..."
+                      placeholder="Obs. rápida (opcional)..."
                       value={quickEntries[`obs_${pet.id}`] || ''}
                       onChange={(e) => setQuickEntries(prev => ({ ...prev, [`obs_${pet.id}`]: e.target.value }))}
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-emerald-300 shadow-inner"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:border-emerald-300 shadow-inner"
                     />
                   </div>
                 </div>
 
-                <div className="border-t border-slate-200/50 pt-3 space-y-2.5 text-xs">
+                <div className="border-t border-slate-250/50 pt-2.5 space-y-2 text-xs">
                   <div className="flex justify-between items-center h-5">
-                    <span className="text-[12px] font-black text-slate-500 uppercase tracking-widest leading-none">Dias que frequenta</span>
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest leading-none">Dias que frequenta</span>
                     <div className="flex gap-1 justify-end max-w-[150px] overflow-hidden truncate">
                       {(pet.dia_semana || '-').split(',').map(d => (
-                         <span key={d} className="text-emerald-700 font-extrabold text-[10px] uppercase tracking-wider bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100 shrink-0">{d.trim()}</span>
+                         <span key={d} className="text-emerald-700 font-extrabold text-[9px] uppercase tracking-wider bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100 shrink-0">{d.trim()}</span>
                       ))}
                     </div>
                   </div>
                   <div className="flex justify-between items-center pt-0.5 h-5">
-                    <span className={`text-[11px] font-black uppercase tracking-widest ${(pet.possui_alergia || '').toLowerCase() === 'sim' ? 'text-rose-500 animate-pulse' : 'text-slate-300'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${(pet.possui_alergia || '').toLowerCase() === 'sim' ? 'text-rose-500 animate-pulse' : 'text-slate-350'}`}>
                       {(pet.possui_alergia || '').toLowerCase() === 'sim' ? '⚠️ Alergia Crítica' : '✅ Saudável'}
                     </span>
-                    <span className="text-indigo-650 bg-indigo-50/70 px-2.5 py-0.5 rounded-lg border border-indigo-100 font-extrabold text-[11px] uppercase truncate max-w-[140px]" title={pet.tipo_alimentacao}>
+                    <span className="text-indigo-650 bg-indigo-50/70 px-2.5 py-0.5 rounded-lg border border-indigo-100 font-extrabold text-[10px] uppercase truncate max-w-[140px]" title={pet.tipo_alimentacao}>
                       {pet.tipo_alimentacao}
                     </span>
                   </div>
@@ -2449,48 +2432,48 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <div className="space-y-1 overflow-y-auto pr-0.5 h-full max-h-[60px] text-left">
                         {(pet.alertas_importantes && pet.alertas_importantes.length > 0) && (
                           <div className="flex flex-wrap gap-1 items-center">
-                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-wider shrink-0">ALERTAS:</span>
+                            <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider shrink-0">ALERTAS:</span>
                             {pet.alertas_importantes.map(alertTag => (
-                              <span key={alertTag} className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1 py-0.2 rounded border border-amber-100/50 uppercase truncate max-w-[120px]" title={alertTag}>🚨 {alertTag}</span>
+                              <span key={alertTag} className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1 py-0.2 rounded border border-amber-100/50 uppercase truncate max-w-[120px]" title={alertTag}>🚨 {alertTag}</span>
                             ))}
                           </div>
                         )}
 
                         {(pet.perfil_comportamental && pet.perfil_comportamental.length > 0) && (
                           <div className="flex flex-wrap gap-1 items-center">
-                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-wider shrink-0">PERFIL:</span>
+                            <span className="text-[9px] font-black text-indigo-600 uppercase tracking-wider shrink-0">PERFIL:</span>
                             {pet.perfil_comportamental.map(trait => (
-                              <span key={trait} className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded border border-indigo-100/30 uppercase truncate max-w-[120px]" title={trait}>🧠 {trait}</span>
+                              <span key={trait} className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded border border-indigo-100/30 uppercase truncate max-w-[120px]" title={trait}>🧠 {trait}</span>
                             ))}
                           </div>
                         )}
 
                         {(pet.amizades && pet.amizades.length > 0) && (
                           <div className="flex flex-wrap gap-1 items-center">
-                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-wider shrink-0">AMIGOS:</span>
+                            <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider shrink-0">AMIGOS:</span>
                             {pet.amizades.map(friend => (
-                              <span key={friend.id} className="text-[10px] font-extrabold text-slate-600 bg-white border border-slate-150 px-1 py-0.2 rounded shadow-sm truncate max-w-[120px]" title={`${friend.nivelAmizade}: ${friend.observacao}`}>❤️ {friend.petAmigo}</span>
+                              <span key={friend.id} className="text-[9px] font-extrabold text-slate-600 bg-white border border-slate-150 px-1 py-0.2 rounded shadow-sm truncate max-w-[120px]" title={`${friend.nivelAmizade}: ${friend.observacao}`}>❤️ {friend.petAmigo}</span>
                             ))}
                           </div>
                         )}
                       </div>
                     ) : (
                       <div className="text-center py-2 bg-slate-100/45 rounded-xl border border-dashed border-slate-200/80 flex items-center justify-center h-full">
-                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">🟢 Sem restrições de rotina</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">🟢 Sem restrições de rotina</span>
                       </div>
                     )}
                   </div>
 
                   {/* INDICADOR DE REVISÃO MENSAL */}
                   {pet.ultimo_responsavel_atualizacao ? (
-                    <div className="flex items-center justify-between gap-1.5 mt-2 border-t border-slate-100/50 pt-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest h-5">
+                    <div className="flex items-center justify-between gap-1.5 mt-2 border-t border-slate-100/50 pt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest h-5">
                       <span>Ficha Mestre:</span>
                       <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 font-extrabold shrink-0 truncate max-w-[165px]" title={`Revisado por ${pet.ultimo_responsavel_atualizacao} em ${pet.ultima_data_atualizacao}`}>
                         📋 {pet.ultimo_mes_atualizacao} ({pet.ultimo_responsavel_atualizacao})
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between gap-1.5 mt-2 border-t border-slate-100/50 pt-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest h-5">
+                    <div className="flex items-center justify-between gap-1.5 mt-2 border-t border-slate-100/50 pt-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest h-5">
                       <span>Ficha Mestre:</span>
                       <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100 font-extrabold shrink-0">
                         ⚠️ Pendente
@@ -2685,7 +2668,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Responsável pela Atividade *</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Nome do Cuidador *</span>
                   <input
                     type="text"
                     required
@@ -3082,7 +3065,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Responsável *</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Nome do Cuidador *</span>
                   <input
                     type="text"
                     required
@@ -3511,24 +3494,6 @@ const Dashboard: React.FC<DashboardProps> = ({
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* RECOVERY FROM AN EMPTY PETS DIRECTORY */}
-      {pets.length === 0 && (
-        <div className="bg-rose-50/70 border-2 border-rose-100 p-6 rounded-[35px] flex items-center gap-5 shadow-sm">
-          <span className="text-4xl">🆘</span>
-          <div className="text-left">
-            <p className="text-rose-900 font-extrabold text-xs uppercase tracking-widest leading-none mb-1">Cães não carregados ou vazios</p>
-            <p className="text-rose-700 text-[10px] font-bold leading-tight">Por termos integrado o novo sistema de nuvem, puxe seus arquivos para alimentar os registros locais cadastrados anteriormente.</p>
-          </div>
-          <button 
-            type="button"
-            onClick={handlePullSync}
-            className="ml-auto bg-rose-500 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 transition-all shadow-md active:scale-95"
-          >
-            RECUPERAR DADOS
-          </button>
         </div>
       )}
 

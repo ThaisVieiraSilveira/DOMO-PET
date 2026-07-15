@@ -114,7 +114,7 @@ const PerfilPetPublico: React.FC = () => {
 
         // Fallback to localStorage if not found/no firebase
         if (!linkData) {
-          const linksStr = localStorage.getItem('kahu_tutor_links') || '{}';
+          const linksStr = localStorage.getItem('domo_tutor_links') || '{}';
           const links = JSON.parse(linksStr);
           const localLink = links[token];
           if (localLink && localLink.ativo) {
@@ -144,7 +144,7 @@ const PerfilPetPublico: React.FC = () => {
 
         // Fallback to localStorage for Pet
         if (!petData) {
-          const cachedPets = JSON.parse(localStorage.getItem('kahu_master_pets') || '[]');
+          const cachedPets = JSON.parse(localStorage.getItem('domo_master_pets') || '[]');
           const localPet = cachedPets.find((p: any) => p.id === linkData.petId);
           if (localPet) {
             petData = localPet;
@@ -190,7 +190,7 @@ const PerfilPetPublico: React.FC = () => {
         }
 
         if (!activeStay) {
-          const staysStr = localStorage.getItem('kahu_hotel_stays_v2') || localStorage.getItem('kahu_hotel_stays') || '[]';
+          const staysStr = localStorage.getItem('domo_hotel_stays_v2') || localStorage.getItem('domo_hotel_stays') || '[]';
           const stays: HotelStay[] = JSON.parse(staysStr);
           const petStay = stays.find(s => s.petId === petData!.id && (s.status === 'ativa' || s.active));
           if (petStay) {
@@ -199,14 +199,14 @@ const PerfilPetPublico: React.FC = () => {
           }
         }
 
-        const medsStr = localStorage.getItem('kahu_medications') || '[]';
+        const medsStr = localStorage.getItem('domo_medications') || '[]';
         const meds: Medication[] = JSON.parse(medsStr);
         const petMeds = meds.filter(m => m.petId === petData!.id && m.active);
         setActiveMedications(petMeds);
 
         // 5. Check if today has a checklist entry to show "Last update today at"
         const todayStr = new Date().toISOString().split('T')[0];
-        const checksStr = localStorage.getItem('kahu_checklists') || '[]';
+        const checksStr = localStorage.getItem('domo_checklists') || '[]';
         const checklists: ChecklistEntry[] = JSON.parse(checksStr);
         const todayCheck = checklists.find(c => c.petId === petData!.id && c.date === todayStr);
         if (todayCheck) {
@@ -298,7 +298,7 @@ const PerfilPetPublico: React.FC = () => {
 
         // If Firestore subcollections are empty, we check if there are localStorage fallbacks or provide beautiful, high-fidelity mock data!
         if (dbTimeline.length === 0) {
-          const localTimelineStr = localStorage.getItem(`kahu_timeline_${petData.id}`);
+          const localTimelineStr = localStorage.getItem(`domo_timeline_${petData.id}`);
           if (localTimelineStr) {
             dbTimeline = JSON.parse(localTimelineStr).map((ev: any) => ({
               ...ev,
@@ -334,7 +334,7 @@ const PerfilPetPublico: React.FC = () => {
         setTimeline(dbTimeline);
 
         if (dbMoments.length === 0) {
-          const localMomentsStr = localStorage.getItem(`kahu_moments_${petData.id}`);
+          const localMomentsStr = localStorage.getItem(`domo_moments_${petData.id}`);
           if (localMomentsStr) {
             dbMoments = JSON.parse(localMomentsStr).map((m: any) => ({
               ...m,
@@ -351,7 +351,7 @@ const PerfilPetPublico: React.FC = () => {
         setMoments(dbMoments);
 
         if (dbBulletins.length === 0) {
-          const localBulletinsStr = localStorage.getItem(`kahu_bulletins_${petData.id}`);
+          const localBulletinsStr = localStorage.getItem(`domo_bulletins_${petData.id}`);
           if (localBulletinsStr) {
             dbBulletins = JSON.parse(localBulletinsStr);
           }

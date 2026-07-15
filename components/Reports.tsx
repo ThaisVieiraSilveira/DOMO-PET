@@ -46,7 +46,7 @@ const Reports: React.FC<ReportsProps> = ({ pets, checklists }) => {
     
     const foodStatus = entry.comeu;
     const nutritionNote = (foodStatus === 'Não comeu' || foodStatus === 'Comeu metade' || foodStatus === 'Comeu menos da metade') 
-      ? "\n\nCaso continue apresentando falta de apetite, uma consulta com uma nutricionista veterinária pode ser uma ótima opção para ajustar a dieta de forma personalizada."
+      ? "\n\nComo ele(a) não comeu tudo hoje, vale a pena ficar atento(a) de como será a alimentação dele(a) no restante do dia. Com paciência, amor e carinho, logo o apetite volta ao normal! ❤️"
       : "";
     const obs = entry.observacoes ? `\n\nObservação: ${entry.observacoes}` : '';
 

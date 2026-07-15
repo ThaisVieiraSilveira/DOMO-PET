@@ -45,7 +45,7 @@ const Medication: React.FC<MedicationProps> = ({
   
   // Persist the last user who administered medication for friction-free clicks
   const [globalOperator, setGlobalOperator] = useState<string>(() => {
-    return localStorage.getItem('domo_last_med_provider') || 'Cuidador';
+    return localStorage.getItem('domo_last_med_provider') || '';
   });
 
   const [offeredByInputs, setOfferedByInputs] = useState<Record<string, string>>({});
@@ -143,8 +143,8 @@ const Medication: React.FC<MedicationProps> = ({
     const inputKey = `${medicationId}-${slot}`;
     const opVal = offeredByInputs[inputKey] || globalOperator;
     
-    if (!opVal.trim()) {
-      alert('Por favor, informe quem administrou a medicação para fazer o registro.');
+    if (!opVal.trim() || opVal === 'Cuidador') {
+      alert('Por favor, informe o nome do monitor que administrou a medicação para fazer o registro.');
       return;
     }
 
@@ -170,8 +170,8 @@ const Medication: React.FC<MedicationProps> = ({
     const inputKey = `${medicationId}-${slot}`;
     const opVal = offeredByInputs[inputKey] || globalOperator;
 
-    if (!opVal.trim()) {
-      alert('Por favor, informe quem administrou ou negou a medicação.');
+    if (!opVal.trim() || opVal === 'Cuidador') {
+      alert('Por favor, informe o nome do monitor que administrou ou recusou a medicação.');
       return;
     }
 
@@ -455,7 +455,7 @@ const Medication: React.FC<MedicationProps> = ({
           <div className="relative">
             <input
               type="text"
-              placeholder="Quem está aplicando?"
+              placeholder="Nome do Monitor"
               value={globalOperator}
               onChange={(e) => {
                 setGlobalOperator(e.target.value);
@@ -511,19 +511,37 @@ const Medication: React.FC<MedicationProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <button
-                  onClick={() => setSelectedPetId('')}
-                  className="bg-white/10 hover:bg-white/20 border border-white/10 text-white px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
-                >
-                  Voltar para Todos
-                </button>
-                <button
-                  onClick={() => setIsAddingMed(prev => !prev)}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md shadow-emerald-500/10 active:scale-95"
-                >
-                  {isAddingMed ? 'FECHAR FORMULÁRIO ✕' : '+ NOVO REMÉDIO'}
-                </button>
+              <div className="flex items-center gap-4 flex-wrap md:flex-nowrap">
+                {/* Monitor Name Input in Pet profile card */}
+                <div className="flex flex-col gap-1 w-full md:w-44">
+                  <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest ml-1">Nome do Monitor *</span>
+                  <input
+                    type="text"
+                    required
+                    value={globalOperator}
+                    onChange={(e) => {
+                      setGlobalOperator(e.target.value);
+                      localStorage.setItem('domo_last_med_provider', e.target.value);
+                    }}
+                    placeholder="Nome do monitor"
+                    className="bg-white/10 border border-white/20 hover:border-white/45 focus:border-indigo-400 text-white placeholder:text-slate-500 font-extrabold px-3.5 py-2.5 rounded-xl outline-none text-xs transition-all w-full"
+                  />
+                </div>
+
+                <div className="flex gap-2.5 w-full md:w-auto">
+                  <button
+                    onClick={() => setSelectedPetId('')}
+                    className="flex-1 md:flex-none bg-white/10 hover:bg-white/20 border border-white/10 text-white px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap"
+                  >
+                    Voltar para Todos
+                  </button>
+                  <button
+                    onClick={() => setIsAddingMed(prev => !prev)}
+                    className="flex-1 md:flex-none bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md shadow-emerald-500/10 active:scale-95 whitespace-nowrap"
+                  >
+                    {isAddingMed ? 'FECHAR FORMULÁRIO ✕' : '+ NOVO REMÉDIO'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -539,7 +557,7 @@ const Medication: React.FC<MedicationProps> = ({
               >
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                   <span className="text-lg">📋</span>
-                  <h4 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Cadastrar Prescrição Veterinária</h4>
+                  <h4 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Cadastrar Prescrição</h4>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -783,7 +801,7 @@ const Medication: React.FC<MedicationProps> = ({
                                         Registrado por <strong className="text-slate-800">{log.offeredBy}</strong> {isOffered ? 'como administrado' : 'como recusado/não dado'} {getLogFormattedTime(log) && `sinteticamente às ${getLogFormattedTime(log)}`}.
                                       </p>
                                     ) : (
-                                      <p className="text-[10px] font-bold text-amber-600">Aguardando aplicação pelo cuidador</p>
+                                      <p className="text-[10px] font-bold text-amber-600">Aguardando aplicação pelo monitor</p>
                                     )}
                                   </div>
                                 </div>

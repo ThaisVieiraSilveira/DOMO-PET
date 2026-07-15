@@ -41,17 +41,25 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="max-w-[1780px] mx-auto flex justify-between items-center px-2">
           <Link to="/" className="flex items-center gap-5 group">
             {domoLogo ? (
-              <div className="w-20 h-20 bg-white p-2 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden shrink-0">
-                <img src={domoLogo} alt="Logo" className="w-full h-full object-contain" />
-              </div>
+              domoLogo === '/logo.svg' ? (
+                <div className="w-24 h-24 flex items-center justify-center shrink-0">
+                  <img src="/logo-white.svg" alt="Logo" className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-20 h-20 bg-white p-2 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden shrink-0">
+                  <img src={domoLogo} alt="Logo" className="w-full h-full object-contain" />
+                </div>
+              )
             ) : (
               <span className="text-5xl group-hover:rotate-12 transition-transform select-none">🐶</span>
             )}
-            <h1 
-              className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white transition-colors"
-            >
-              {domoNome}
-            </h1>
+            {(!domoLogo || domoLogo !== '/logo.svg') && (
+              <h1 
+                className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white transition-colors"
+              >
+                {domoNome}
+              </h1>
+            )}
           </Link>
           
           <div className="flex items-center gap-3 md:gap-5">

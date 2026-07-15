@@ -15,7 +15,7 @@ export const getGeneratedMessage = (pet: Pet, entry: Partial<ChecklistEntry>) =>
   } else if (foodStatus) {
     const isLowAppetite = foodStatus === 'Não comeu' || foodStatus === 'Comeu metade' || foodStatus === 'Comeu menos da metade';
     const nutritionNote = isLowAppetite 
-      ? "\n\nCaso continue apresentando falta de apetite, uma consulta com uma nutricionista veterinária pode ser uma ótima opção para ajustar a dieta de forma personalizada."
+      ? "\n\nComo ele(a) não comeu tudo hoje, vale a pena ficar atento(a) de como será a alimentação dele(a) no restante do dia. Com paciência, amor e carinho, logo o apetite volta ao normal! ❤️"
       : "";
     
     const statusText = (foodStatus as string).toLowerCase();

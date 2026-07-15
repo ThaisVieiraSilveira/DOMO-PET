@@ -106,7 +106,7 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
 
       // Local storage fallback
       try {
-        const linksStr = localStorage.getItem('kahu_tutor_links') || '{}';
+        const linksStr = localStorage.getItem('domo_tutor_links') || '{}';
         const links = JSON.parse(linksStr);
         links[token] = {
           crecheId: user.uid,
@@ -118,7 +118,7 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
           criadoEm: pet.tutorAccessCreatedAt || new Date().toISOString(),
           atualizadoEm: new Date().toISOString()
         };
-        localStorage.setItem('kahu_tutor_links', JSON.stringify(links));
+        localStorage.setItem('domo_tutor_links', JSON.stringify(links));
       } catch (localErr) {
         console.error("Erro no local storage tutorAccessLinks:", localErr);
       }
@@ -218,12 +218,12 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
 
       // Update local storage fallback
       try {
-        const linksStr = localStorage.getItem('kahu_tutor_links') || '{}';
+        const linksStr = localStorage.getItem('domo_tutor_links') || '{}';
         const links = JSON.parse(linksStr);
         if (links[oldToken]) {
           links[oldToken].ativo = false;
           links[oldToken].atualizadoEm = new Date().toISOString();
-          localStorage.setItem('kahu_tutor_links', JSON.stringify(links));
+          localStorage.setItem('domo_tutor_links', JSON.stringify(links));
         }
       } catch (localErr) {
         console.error("Erro no local storage tutorAccessLinks:", localErr);
@@ -290,7 +290,7 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
 
       // Local storage fallback
       try {
-        const linksStr = localStorage.getItem('kahu_tutor_links') || '{}';
+        const linksStr = localStorage.getItem('domo_tutor_links') || '{}';
         const links = JSON.parse(linksStr);
         links[newToken] = {
           crecheId: user.uid,
@@ -302,7 +302,7 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
           criadoEm: new Date().toISOString(),
           atualizadoEm: new Date().toISOString()
         };
-        localStorage.setItem('kahu_tutor_links', JSON.stringify(links));
+        localStorage.setItem('domo_tutor_links', JSON.stringify(links));
       } catch (localErr) {
         console.error("Erro no local storage tutorAccessLinks:", localErr);
       }

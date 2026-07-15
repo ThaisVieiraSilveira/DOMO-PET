@@ -12,9 +12,9 @@ const LOCAL_STORAGE_KEYS = {
 };
 
 const DEFAULT_VALUES = {
-  nome: 'DOMO',
-  cor: '#085041',
-  logo: '',
+  nome: 'Domo',
+  cor: '#2d512e',
+  logo: '/logo.svg',
   slogan: 'Gestão canina de ponta a ponta',
   slug: 'domo',
 };
@@ -32,11 +32,35 @@ function generateSlug(text: string): string {
 }
 
 export function useTenant() {
-  const [nome, setNome] = useState(() => localStorage.getItem(LOCAL_STORAGE_KEYS.nome) || DEFAULT_VALUES.nome);
-  const [cor, setCor] = useState(() => localStorage.getItem(LOCAL_STORAGE_KEYS.cor) || DEFAULT_VALUES.cor);
-  const [logo, setLogo] = useState(() => localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo);
-  const [slogan, setSlogan] = useState(() => localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan);
-  const [slug, setSlug] = useState(() => localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug);
+  const [nome, setNome] = useState(() => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEYS.nome);
+    if (stored === 'Bichinhos peludos') return 'Domo';
+    return stored || DEFAULT_VALUES.nome;
+  });
+  const [cor, setCor] = useState(() => {
+    const storedNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome);
+    const storedCor = localStorage.getItem(LOCAL_STORAGE_KEYS.cor);
+    if (storedNome === 'Bichinhos peludos') return '#2d512e';
+    return storedCor || DEFAULT_VALUES.cor;
+  });
+  const [logo, setLogo] = useState(() => {
+    const storedNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome);
+    const storedLogo = localStorage.getItem(LOCAL_STORAGE_KEYS.logo);
+    if (storedNome === 'Bichinhos peludos' || !storedLogo) return '/logo.svg';
+    return storedLogo || DEFAULT_VALUES.logo;
+  });
+  const [slogan, setSlogan] = useState(() => {
+    const storedNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome);
+    const storedSlogan = localStorage.getItem(LOCAL_STORAGE_KEYS.slogan);
+    if (storedNome === 'Bichinhos peludos') return 'Gestão canina de ponta a ponta';
+    return storedSlogan || DEFAULT_VALUES.slogan;
+  });
+  const [slug, setSlug] = useState(() => {
+    const storedNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome);
+    const storedSlug = localStorage.getItem(LOCAL_STORAGE_KEYS.slug);
+    if (storedNome === 'Bichinhos peludos') return 'domo';
+    return storedSlug || DEFAULT_VALUES.slug;
+  });
   const [loading, setLoading] = useState(true);
 
   // Sync state when branding gets updated from outside
@@ -63,11 +87,31 @@ export function useTenant() {
 
       if (!user || !isFirebaseConfigured || !db) {
         // Fallback to localStorage (or defaults)
-        setNome(localStorage.getItem(LOCAL_STORAGE_KEYS.nome) || DEFAULT_VALUES.nome);
-        setCor(localStorage.getItem(LOCAL_STORAGE_KEYS.cor) || DEFAULT_VALUES.cor);
-        setLogo(localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo);
-        setSlogan(localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan);
-        setSlug(localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug);
+        let localNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome) || DEFAULT_VALUES.nome;
+        let localCor = localStorage.getItem(LOCAL_STORAGE_KEYS.cor) || DEFAULT_VALUES.cor;
+        let localLogo = localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo;
+        let localSlogan = localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan;
+        let localSlug = localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug;
+
+        if (localNome === 'Bichinhos peludos' || !localLogo || localLogo === '' || localLogo.includes('logo-bichinhos')) {
+          localNome = 'Domo';
+          localCor = '#2d512e';
+          localLogo = '/logo.svg';
+          localSlogan = 'Gestão canina de ponta a ponta';
+          localSlug = 'domo';
+
+          localStorage.setItem(LOCAL_STORAGE_KEYS.nome, localNome);
+          localStorage.setItem(LOCAL_STORAGE_KEYS.cor, localCor);
+          localStorage.setItem(LOCAL_STORAGE_KEYS.logo, localLogo);
+          localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, localSlogan);
+          localStorage.setItem(LOCAL_STORAGE_KEYS.slug, localSlug);
+        }
+
+        setNome(localNome);
+        setCor(localCor);
+        setLogo(localLogo);
+        setSlogan(localSlogan);
+        setSlug(localSlug);
         setLoading(false);
         return;
       }
@@ -79,11 +123,27 @@ export function useTenant() {
         if (active) {
           if (docSnap.exists()) {
             const data = docSnap.data();
-            const fetchedNome = data.nome || DEFAULT_VALUES.nome;
-            const fetchedCor = data.cor || DEFAULT_VALUES.cor;
-            const fetchedLogo = data.logo || DEFAULT_VALUES.logo;
-            const fetchedSlogan = data.slogan || DEFAULT_VALUES.slogan;
-            const fetchedSlug = data.slug || generateSlug(fetchedNome);
+            let fetchedNome = data.nome || DEFAULT_VALUES.nome;
+            let fetchedCor = data.cor || DEFAULT_VALUES.cor;
+            let fetchedLogo = data.logo || DEFAULT_VALUES.logo;
+            let fetchedSlogan = data.slogan || DEFAULT_VALUES.slogan;
+            let fetchedSlug = data.slug || generateSlug(fetchedNome);
+
+            if (fetchedNome === 'Bichinhos peludos' || !fetchedLogo || fetchedLogo === '' || fetchedLogo.includes('logo-bichinhos')) {
+              fetchedNome = 'Domo';
+              fetchedCor = '#2d512e';
+              fetchedLogo = '/logo.svg';
+              fetchedSlogan = 'Gestão canina de ponta a ponta';
+              fetchedSlug = 'domo';
+
+              setDoc(tenantRef, {
+                nome: fetchedNome,
+                cor: fetchedCor,
+                logo: fetchedLogo,
+                slogan: fetchedSlogan,
+                slug: fetchedSlug
+              }).catch(err => console.error("Erro ao migrar tenant:", err));
+            }
 
             setNome(fetchedNome);
             setCor(fetchedCor);
@@ -99,11 +159,25 @@ export function useTenant() {
             localStorage.setItem(LOCAL_STORAGE_KEYS.slug, fetchedSlug);
           } else {
             // Document doesn't exist yet, load local storage settings
-            const localNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome) || DEFAULT_VALUES.nome;
-            const localCor = localStorage.getItem(LOCAL_STORAGE_KEYS.cor) || DEFAULT_VALUES.cor;
-            const localLogo = localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo;
-            const localSlogan = localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan;
-            const localSlug = localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug;
+            let localNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome) || DEFAULT_VALUES.nome;
+            let localCor = localStorage.getItem(LOCAL_STORAGE_KEYS.cor) || DEFAULT_VALUES.cor;
+            let localLogo = localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo;
+            let localSlogan = localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan;
+            let localSlug = localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug;
+
+            if (localNome === 'Bichinhos peludos' || !localLogo || localLogo === '' || localLogo.includes('logo-bichinhos')) {
+              localNome = 'Domo';
+              localCor = '#2d512e';
+              localLogo = '/logo.svg';
+              localSlogan = 'Gestão canina de ponta a ponta';
+              localSlug = 'domo';
+
+              localStorage.setItem(LOCAL_STORAGE_KEYS.nome, localNome);
+              localStorage.setItem(LOCAL_STORAGE_KEYS.cor, localCor);
+              localStorage.setItem(LOCAL_STORAGE_KEYS.logo, localLogo);
+              localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, localSlogan);
+              localStorage.setItem(LOCAL_STORAGE_KEYS.slug, localSlug);
+            }
 
             setNome(localNome);
             setCor(localCor);

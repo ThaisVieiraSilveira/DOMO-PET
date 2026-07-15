@@ -6,9 +6,9 @@ import { db, auth, storage, isFirebaseConfigured } from '../firebase';
 import { HotelStay, HotelRecord, HotelReport } from '../../types';
 
 const LOCAL_STORAGE_KEYS = {
-  stays: 'kahu_hotel_stays_v2',
-  records: 'kahu_hotel_records_v2',
-  reports: 'kahu_hotel_reports_v2',
+  stays: 'domo_hotel_stays_v2',
+  records: 'domo_hotel_records_v2',
+  reports: 'domo_hotel_reports_v2',
 };
 
 export function useHotel() {

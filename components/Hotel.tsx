@@ -55,6 +55,7 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
   const [isViewingStayRecords, setIsViewingStayRecords] = useState<HotelStay | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState<HotelStay | null>(null);
   const [viewingReport, setViewingReport] = useState<HotelReport | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Form State - Quick Pet
   const [quickPet, setQuickPet] = useState({
@@ -202,6 +203,10 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
       });
       setNewStay(prev => ({ ...prev, petId: newCreatedPet.id }));
       setIsQuickAddingPet(false);
+      setSuccessToast(`Pet ${quickPet.pet_nome} cadastrado com sucesso e selecionado no check-in!`);
+      setTimeout(() => {
+        setSuccessToast(null);
+      }, 5000);
       setQuickPet({ pet_nome: '', tutor_nome: '', telefone: '', possui_alergia: 'Não', alimentos_proibidos: '' });
     } catch (err) {
       alert('Erro ao cadastrar pet.');
@@ -264,6 +269,10 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
 
     // Close form & reset
     setIsAddingStay(false);
+    setSuccessToast(`Check-in de ${selectedPetObj?.pet_nome || 'Pet'} realizado com sucesso!`);
+    setTimeout(() => {
+      setSuccessToast(null);
+    }, 5000);
     setNewStay({
       petId: '',
       checkInDate: new Date().toISOString().split('T')[0],
@@ -493,7 +502,10 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
     setIsCheckingOut(null);
     setCheckoutItemsCheck({});
     setCheckoutReportText('');
-    alert('Hospedagem encerrada e boletim gerado com sucesso!');
+    setSuccessToast('Hospedagem encerrada e boletim gerado com sucesso!');
+    setTimeout(() => {
+      setSuccessToast(null);
+    }, 5000);
   };
 
   // Helper to share bulletin report on WhatsApp
@@ -512,7 +524,10 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
     }
     const url = `${window.location.origin}/#/perfil-pet/${pet.tutorAccessToken}?petId=${pet.id}`;
     navigator.clipboard.writeText(url).then(() => {
-      alert('Link do tutor copiado com sucesso para a área de transferência!');
+      setSuccessToast('Link do tutor copiado com sucesso!');
+      setTimeout(() => {
+        setSuccessToast(null);
+      }, 5000);
     }).catch(() => {
       alert('Não foi possível copiar automaticamente. Use: ' + url);
     });
@@ -520,6 +535,27 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+      
+      {/* Toast de Sucesso customizado */}
+      <AnimatePresence>
+        {successToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-6 py-4 bg-[#085041] border border-emerald-500/20 text-white rounded-[24px] shadow-2xl font-bold text-sm min-w-[300px] max-w-md"
+          >
+            <span className="text-xl">✅</span>
+            <div className="flex-1 text-left font-black">{successToast}</div>
+            <button
+              onClick={() => setSuccessToast(null)}
+              className="text-white/60 hover:text-white ml-2 text-xs font-black cursor-pointer"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* HEADER PRINCIPAL */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-8 rounded-[40px] border border-indigo-50 shadow-sm">
@@ -1186,7 +1222,7 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
       {/* MODAL: CADASTRO RÁPIDO DE NOVO PET INLINE */}
       <AnimatePresence>
         {isQuickAddingPet && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-55 p-4 text-left">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 text-left">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1307,10 +1343,22 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
                     onChange={(e) => setMealForm(prev => ({ ...prev, slot: Number(e.target.value) }))}
                     className="w-full p-3 border border-slate-200 rounded-xl font-bold text-xs bg-transparent"
                   >
-                    {isLoggingMeal.feedingSchedule?.map((time, idx) => (
-                      <option key={idx} value={idx}>Refeição {idx + 1} ({time})</option>
-                    ))}
+                    {isLoggingMeal.feedingSchedule?.map((time, idx) => {
+                      const total = isLoggingMeal.feedingSchedule?.length || 0;
+                      let label = `Refeição ${idx + 1} (${time})`;
+                      if (total === 1) {
+                        label = `Refeição Única (${time})`;
+                      } else if (total === 2) {
+                        label = idx === 0 ? `Café da Manhã (${time})` : `Jantar (${time})`;
+                      } else if (total === 3) {
+                        label = idx === 0 ? `Café da Manhã (${time})` : idx === 1 ? `Almoço (${time})` : `Jantar (${time})`;
+                      }
+                      return <option key={idx} value={idx}>{label}</option>;
+                    })}
                   </select>
+                  <p className="text-[10px] text-indigo-650 bg-indigo-50/50 p-2.5 rounded-xl font-semibold leading-relaxed mt-1">
+                    ⚠️ Este pet está configurado com <strong>{isLoggingMeal.feedingSchedule?.length || 0} refeições ao dia</strong>. Apenas os horários oficiais estão disponíveis para lançamento, evitando erros (como oferecer almoço por engano)!
+                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -1328,7 +1376,7 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">COLABORADOR RESPONSÁVEL</label>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">NOME DO CUIDADOR</label>
                   <input
                     type="text"
                     placeholder="Quem ofereceu a ração?"
@@ -1433,7 +1481,7 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
                 )}
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black text-slate-450 uppercase tracking-widest ml-1">RESPONSÁVEL PELA APLICAÇÃO *</label>
+                  <label className="text-xs font-black text-slate-450 uppercase tracking-widest ml-1">NOME DO CUIDADOR *</label>
                   <input
                     type="text"
                     placeholder="Quem aplicou a dose?"
@@ -1507,7 +1555,7 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">RECREADOR RESPONSÁVEL</label>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">CUIDADOR RESPONSÁVEL</label>
                   <input
                     type="text"
                     placeholder="Nome do monitor"

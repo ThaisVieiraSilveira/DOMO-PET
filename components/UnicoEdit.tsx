@@ -746,7 +746,7 @@ const UnicoEdit: React.FC<UnicoEditProps> = ({ pets, onSave, isEmbedded = false 
 
                 {/* REVISION AUTHOR */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md w-max uppercase tracking-widest ml-2">RESPONSÁVEL (QUEM MEXEU) *</label>
+                  <label className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md w-max uppercase tracking-widest ml-2">CUIDADOR (QUEM MEXEU) *</label>
                   <input
                     type="text"
                     className="p-3.5 bg-white border-2 border-emerald-100 rounded-xl outline-none font-bold text-slate-700 text-xs focus:border-emerald-400 transition"

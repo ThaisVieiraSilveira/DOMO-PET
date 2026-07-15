@@ -3,29 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DOMO — Painel Administrativo SaaS</title>
+  <title>DOMO — Painel SaaS do Administrador</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- Google Fonts for rounded typography -->
+  <!-- Google Fonts (Quicksand) to match the main modern rounded system -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <script>
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Nunito', 'sans-serif'],
+            sans: ['Quicksand', 'sans-serif'],
           },
           colors: {
-            domoBg: '#F0FAF6',      /* General background: very light mint green */
-            domoPrimary: '#1D9E75', /* Primary button and highlights: medium green */
-            domoDark: '#085041',    /* Dark menu and texts: dark green */
-            domoLight: '#E6F6F0',   /* Soft highlight container */
-            domoAccent: '#2EC492',  /* Vibrant accent green */
+            domoBg: '#F3FAF7',      /* Soft Mint Canvas */
+            domoPrimary: '#12A174', /* Premium Mint Emerald */
+            domoDark: '#073E33',    /* Rich Forest Charcoal */
+            domoLight: '#E8F6F1',   /* Soft Mint highlights */
+            domoAccent: '#17C993',  /* Vibrant Emerald Pulse */
+            domoIndigo: '#4F46E5',  /* Indigo details */
           }
         }
       }
@@ -33,81 +34,86 @@
   </script>
 
   <style>
-    /* Customs scrollbars */
+    /* Custom Scrollbar */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: #F0FAF6;
+      background: #F3FAF7;
     }
     ::-webkit-scrollbar-thumb {
-      background: #1D9E75;
+      background: #12A174;
       border-radius: 99px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #085041;
+      background: #073E33;
     }
-    /* Simple transitions */
+
+    /* Animation effects */
     .fade-in {
-      animation: fadeIn 0.3s ease-out forwards;
+      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
+      from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    body, input, select, textarea, button {
+      font-family: 'Quicksand', sans-serif;
     }
   </style>
 </head>
-<body class="bg-domoBg text-domoDark h-full flex flex-col font-sans overflow-x-hidden antialiased selection:bg-domoPrimary selection:text-white">
+<body class="bg-domoBg text-domoDark h-full flex flex-col overflow-x-hidden antialiased selection:bg-domoPrimary selection:text-white">
+
+  <!-- ================= NOTIFICAÇÃO TOAST CUSTOMIZADA E ANIMADA ================= -->
+  <div id="toastContainer" class="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- ================= TELA DE LOGIN ================= -->
   <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white rounded-[32px] shadow-2xl p-8 border border-white/50 relative overflow-hidden">
-      <!-- Decorative circles -->
+    <div class="w-full max-w-md bg-white rounded-[40px] shadow-2xl p-8 border border-white/50 relative overflow-hidden">
+      <!-- Decorative elements -->
       <div class="absolute -top-12 -right-12 w-32 h-32 bg-domoLight rounded-full opacity-60 pointer-events-none"></div>
       <div class="absolute -bottom-16 -left-16 w-40 h-40 bg-domoBg rounded-full opacity-80 pointer-events-none"></div>
       
       <div class="relative z-10">
-        <!-- Logo -->
+        <!-- Logo Header -->
         <div class="flex flex-col items-center text-center mb-8">
-          <div class="w-16 h-16 bg-domoLight rounded-2xl flex items-center justify-center mb-3 shadow-inner">
-            <svg class="w-10 h-10 text-domoPrimary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
+          <div class="w-16 h-16 bg-domoLight rounded-3xl flex items-center justify-center mb-3 shadow-inner border border-domoPrimary/10">
+            <span class="text-3xl">🏨</span>
           </div>
-          <h1 class="text-3xl font-black tracking-tight text-domoDark flex items-center justify-center gap-1.5">
-            DOMO <span class="text-xs font-black bg-domoPrimary text-white px-2 py-0.5 rounded-full uppercase tracking-wider">SaaS</span>
+          <h1 class="text-3xl font-black tracking-tight text-domoDark flex items-center justify-center gap-2">
+            DOMO <span class="text-[10px] font-black bg-domoPrimary text-white px-2 py-0.5 rounded-md uppercase tracking-wider">SaaS</span>
           </h1>
-          <p class="text-sm text-slate-500 font-semibold mt-1">Portal Administrativo — Domo Sistema Pet</p>
+          <p class="text-xs text-slate-500 font-bold mt-1 uppercase tracking-wider">Portal Administrativo do Sistema</p>
         </div>
 
         <!-- Notification banner inside Login -->
-        <div id="loginBanner" class="hidden mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-xs text-center font-bold">
-          E-mail ou senha incorretos!
+        <div id="loginBanner" class="hidden mb-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-700 text-xs text-center font-bold">
+          ⚠️ E-mail ou senha incorretos! Verifique e tente novamente.
         </div>
 
         <!-- Form -->
         <form id="loginForm" class="space-y-5">
           <div>
-            <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">E-mail do Administrador</label>
+            <label class="block text-[10px] font-black text-domoDark uppercase tracking-widest ml-1 mb-1.5">E-mail do Administrador</label>
             <div class="relative">
               <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+                👤
               </span>
               <input id="loginEmail" type="email" placeholder="thaisvieiravet@hotmail.com" value="thaisvieiravet@hotmail.com" required
-                class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-slate-700 transition focus:border-domoPrimary focus:bg-white text-sm">
+                class="w-full pl-10 pr-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-slate-700 transition focus:border-domoPrimary focus:bg-white text-xs">
             </div>
           </div>
 
           <div>
-            <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">Senha de Acesso</label>
+            <label class="block text-[10px] font-black text-domoDark uppercase tracking-widest ml-1 mb-1.5">Senha de Acesso</label>
             <div class="relative">
               <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2V10a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                🔑
               </span>
               <input id="loginPassword" type="password" placeholder="••••••••" value="Batata5812" required
-                class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-slate-700 transition focus:border-domoPrimary focus:bg-white text-sm">
+                class="w-full pl-10 pr-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-slate-700 transition focus:border-domoPrimary focus:bg-white text-xs">
             </div>
           </div>
 
@@ -120,13 +126,13 @@
           </div>
 
           <button type="submit" 
-            class="w-full mt-4 py-4 bg-domoPrimary hover:bg-domoAccent text-white font-extrabold text-sm uppercase tracking-widest rounded-2xl shadow-lg shadow-domoPrimary/20 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0">
-            Acessar Painel Admin
+            class="w-full mt-4 py-4 bg-domoPrimary hover:bg-domoAccent text-white font-extrabold text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-domoPrimary/20 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0">
+            Acessar Painel Admin 🚀
           </button>
         </form>
 
-        <div class="text-center mt-6 text-xs text-slate-400 font-semibold">
-          Plano Ativo: <span class="text-domoDark font-bold">DOMO Pro — R$79,90/mês</span>
+        <div class="text-center mt-6 text-xs text-slate-400 font-bold uppercase tracking-wider">
+          Plano Geral de Cobrança: <span id="loginMonthlyPriceDisplay" class="text-domoDark font-black text-xs">R$ 79,90/mês</span>
         </div>
       </div>
     </div>
@@ -140,12 +146,12 @@
     <div class="md:hidden bg-domoDark text-white p-4 flex items-center justify-between border-b border-domoPrimary/10 shadow-md">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-          <svg class="w-5 h-5 text-domoPrimary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span class="text-lg">🏨</span>
         </div>
-        <span class="text-lg font-black tracking-tight text-white">DOMO <span class="text-[9px] bg-domoPrimary px-1.5 py-0.5 rounded-full uppercase font-black">SaaS</span></span>
+        <span class="text-md font-black tracking-tight text-white">DOMO <span class="text-[8px] bg-domoPrimary px-1.5 py-0.5 rounded uppercase font-black">SaaS</span></span>
       </div>
       <button id="mobileMenuBtn" class="p-2 bg-white/5 rounded-xl hover:bg-white/10 text-white transition focus:outline-none">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+        ☰
       </button>
     </div>
 
@@ -153,15 +159,12 @@
     <aside id="sidebarMenu" class="hidden md:flex flex-col w-72 bg-domoDark text-white h-full relative z-30 shrink-0 border-r border-domoPrimary/10">
       <!-- Header Sidebar -->
       <div class="p-6 flex items-center gap-3 border-b border-white/5">
-        <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center shadow-lg">
-          <svg class="w-7 h-7 text-domoAccent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
+        <div class="w-12 h-12 bg-white/15 rounded-2xl flex items-center justify-center shadow-lg border border-white/10">
+          <span class="text-2xl">🏨</span>
         </div>
         <div>
-          <h2 class="text-xl font-black tracking-tight text-white">DOMO</h2>
-          <span class="text-[9px] font-bold uppercase tracking-widest bg-domoPrimary/20 text-domoAccent px-2 py-0.5 rounded-full">Painel Admin</span>
+          <h2 class="text-xl font-black tracking-tight text-white leading-none">DOMO</h2>
+          <span class="text-[9px] font-extrabold uppercase tracking-widest bg-domoPrimary/30 text-domoAccent px-2 py-0.5 rounded-full mt-1.5 inline-block">Painel Admin</span>
         </div>
       </div>
 
@@ -169,47 +172,47 @@
       <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
         <button id="menu-dashboard" onclick="switchTab('dashboard')"
           class="menu-item w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm tracking-tight transition text-left text-slate-300 hover:bg-white/5 hover:text-white">
-          <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077l1.41-.513m14.095-5.13l1.41-.513M5.106 17.785l1.15-.827m11.379-8.16l1.15-.827M8.14 21.27l.707-1.03m7.45-.808l.707-1.03M12 3v1.5m0 15V21" /></svg>
+          <span>📊</span>
           Dashboard Central
         </button>
 
         <button id="menu-creches" onclick="switchTab('creches')"
           class="menu-item w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm tracking-tight transition text-left text-slate-300 hover:bg-white/5 hover:text-white">
-          <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+          <span>🐶</span>
           Gerenciar Creches
         </button>
 
         <button id="menu-adicionar" onclick="switchTab('adicionar')"
           class="menu-item w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm tracking-tight transition text-left text-slate-300 hover:bg-white/5 hover:text-white">
-          <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>➕</span>
           Adicionar Creche
         </button>
 
         <button id="menu-financeiro" onclick="switchTab('financeiro')"
           class="menu-item w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm tracking-tight transition text-left text-slate-300 hover:bg-white/5 hover:text-white">
-          <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>💰</span>
           Controle Financeiro
         </button>
 
         <button id="menu-configuracoes" onclick="switchTab('configuracoes')"
           class="menu-item w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm tracking-tight transition text-left text-slate-300 hover:bg-white/5 hover:text-white">
-          <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          <span>⚙️</span>
           Ajustes Gerais
         </button>
       </nav>
 
       <!-- Sidebar Footer User Account -->
-      <div class="p-4 border-t border-white/5 bg-black/10">
+      <div class="p-4 border-t border-white/5 bg-black/20">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-domoPrimary flex items-center justify-center font-bold text-white shadow-sm">
-            AD
+          <div class="w-10 h-10 rounded-xl bg-domoPrimary flex items-center justify-center font-bold text-white shadow-sm border border-white/10">
+            TS
           </div>
           <div class="flex-1 overflow-hidden">
-            <p id="adminUserEmailDisplay" class="text-xs font-black truncate text-white">admin@domo.com.br</p>
-            <span class="text-[9px] font-bold py-0.5 text-domoAccent uppercase">Administrador Master</span>
+            <p id="adminUserEmailDisplay" class="text-xs font-black truncate text-white">thaisvieiravet@hotmail.com</p>
+            <span class="text-[9px] font-black py-0.5 text-domoAccent uppercase tracking-wider">Administradora Master</span>
           </div>
-          <button id="logoutBtn" title="Sair do Sistema" class="p-2 hover:bg-slate-700 rounded-xl text-slate-300 hover:text-white transition-all">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          <button id="logoutBtn" title="Sair do Sistema" class="p-2 hover:bg-slate-700/50 rounded-xl text-slate-300 hover:text-white transition-all">
+            🚪
           </button>
         </div>
       </div>
@@ -219,74 +222,78 @@
     <main class="flex-1 h-full overflow-y-auto bg-domoBg p-6 md:p-10">
       
       <!-- HEADING ACCENT -->
-      <header class="flex items-center justify-between mb-8 border-b border-white pb-6">
-        <div>
+      <header class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 border-b border-slate-200 pb-6 gap-4">
+        <div class="text-left">
           <h1 id="viewTitle" class="text-3xl font-black tracking-tight text-domoDark">Painel do Administrador</h1>
-          <p id="viewSubtitle" class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Métricas e performance globais do DOMO SaaS</p>
+          <p id="viewSubtitle" class="text-xs font-black text-slate-500 mt-1 uppercase tracking-wider">Métricas e performance globais do DOMO SaaS</p>
         </div>
         
         <!-- Quick System Status Badge -->
-        <div class="hidden sm:flex items-center gap-3">
+        <div class="flex items-center gap-3 self-start sm:self-auto">
           <div class="p-2.5 bg-white rounded-2xl flex items-center gap-2 shadow-sm border border-slate-100">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-            <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Ambiente: Produção</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Ambiente: SaaS Produção</span>
           </div>
         </div>
       </header>
 
+      <!-- ================= INFORMATIVO SAAS COMPLETO ================= -->
+      <div class="mb-8 bg-gradient-to-r from-domoLight/60 to-white border border-domoPrimary/10 p-5 rounded-[28px] text-left">
+        <h4 class="text-xs font-black text-domoPrimary uppercase tracking-widest flex items-center gap-2 mb-1">
+          <span>💡</span> AJUDA ADMINISTRATIVA DOMO
+        </h4>
+        <p class="text-xs text-slate-600 font-semibold leading-relaxed">
+          Neste portal SaaS, você tem o controle absoluto sobre as empresas e creches que utilizam seu software. É possível <strong>ativar ou desativar acessos de forma imediata</strong> (bloqueando ou liberando a conta de qualquer cliente), <strong>mudar o valor da mensalidade Pro</strong> para novos contratos e reajustar o faturamento, bem como registrar <strong>confirmações de recebimentos financeiros</strong> em tempo real.
+        </p>
+      </div>
+
       <!-- ================= SCREEN: DASHBOARD ================= -->
-      <section id="screen-dashboard" class="tab-view space-y-8 fade-in">
+      <section id="screen-dashboard" class="tab-view space-y-8 fade-in text-left">
         
         <!-- METRICS ROW CARDS -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           <!-- Card Creches Ativas -->
-          <div class="bg-white rounded-[28px] p-6 border border-slate-100 shadow-md relative overflow-hidden transition-all duration-300 hover:-translate-y-1">
+          <div class="bg-white rounded-[32px] p-6 border border-slate-150/80 shadow-sm relative overflow-hidden transition-all duration-300 hover:-translate-y-1">
             <div class="absolute right-0 top-0 w-24 h-24 bg-domoLight rounded-full translate-x-4 -translate-y-4 opacity-50 pointer-events-none"></div>
             <div class="relative z-10 flex flex-col justify-between h-full">
               <div class="flex items-center justify-between mb-4">
-                <span class="text-xs font-black uppercase text-slate-400 tracking-wider">Creches Ativas</span>
-                <span class="p-2.5 bg-domoLight text-domoPrimary rounded-xl">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                </span>
+                <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Creches Ativas</span>
+                <span class="p-2 bg-domoLight text-domoPrimary rounded-xl text-lg font-bold">🏢</span>
               </div>
               <div>
-                <h3 id="stat-activeCount" class="text-4xl font-extrabold text-domoDark tracking-tight">0</h3>
-                <p id="stat-activePercent" class="text-slate-500 font-bold text-xs mt-1">100% de ocupação ativa</p>
+                <h3 id="stat-activeCount" class="text-4xl font-black text-domoDark tracking-tight">0</h3>
+                <p id="stat-activePercent" class="text-slate-500 font-bold text-[11px] mt-1">Carregando dados da rede...</p>
               </div>
             </div>
           </div>
 
           <!-- Card Receita Mensal -->
-          <div class="bg-white rounded-[28px] p-6 border border-slate-100 shadow-md relative overflow-hidden transition-all duration-300 hover:-translate-y-1">
+          <div class="bg-white rounded-[32px] p-6 border border-slate-150/80 shadow-sm relative overflow-hidden transition-all duration-300 hover:-translate-y-1">
             <div class="absolute right-0 top-0 w-24 h-24 bg-emerald-50 rounded-full translate-x-4 -translate-y-4 opacity-50 pointer-events-none"></div>
             <div class="relative z-10 flex flex-col justify-between h-full">
               <div class="flex items-center justify-between mb-4">
-                <span class="text-xs font-black uppercase text-slate-400 tracking-wider">Faturamento Estimado</span>
-                <span class="p-2.5 bg-emerald-100 text-domoPrimary rounded-xl">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </span>
+                <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Faturamento Líquido</span>
+                <span class="p-2 bg-emerald-100 text-emerald-700 rounded-xl text-lg">💰</span>
               </div>
               <div>
-                <h3 id="stat-revenue" class="text-4xl font-extrabold text-domoDark tracking-tight">R$ 0,00</h3>
-                <p class="text-slate-500 font-bold text-xs mt-1">Soma das mensalidades pagas</p>
+                <h3 id="stat-revenue" class="text-4xl font-black text-domoDark tracking-tight">R$ 0,00</h3>
+                <p class="text-slate-500 font-bold text-[11px] mt-1">Total acumulado de mensalidades quitadas</p>
               </div>
             </div>
           </div>
 
           <!-- Card Novas Creches -->
-          <div class="bg-white rounded-[28px] p-6 border border-slate-100 shadow-md relative overflow-hidden transition-all duration-300 hover:-translate-y-1">
+          <div class="bg-white rounded-[32px] p-6 border border-slate-150/80 shadow-sm relative overflow-hidden transition-all duration-300 hover:-translate-y-1">
             <div class="absolute right-0 top-0 w-24 h-24 bg-teal-50 rounded-full translate-x-4 -translate-y-4 opacity-50 pointer-events-none"></div>
             <div class="relative z-10 flex flex-col justify-between h-full">
               <div class="flex items-center justify-between mb-4">
-                <span class="text-xs font-black uppercase text-slate-400 tracking-wider">Novas Creches (Este Mês)</span>
-                <span class="p-2.5 bg-teal-100 text-teal-700 rounded-xl">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </span>
+                <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Contratos Recentes</span>
+                <span class="p-2 bg-teal-100 text-teal-700 rounded-xl text-lg">📈</span>
               </div>
               <div>
-                <h3 id="stat-newThisMonth" class="text-4xl font-extrabold text-domoDark tracking-tight">0</h3>
-                <p class="text-slate-500 font-bold text-xs mt-1">Registradas em Junho/2026</p>
+                <h3 id="stat-newThisMonth" class="text-4xl font-black text-domoDark tracking-tight">0</h3>
+                <p class="text-slate-500 font-bold text-[11px] mt-1">Registradas este mês no sistema</p>
               </div>
             </div>
           </div>
@@ -297,41 +304,45 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           <!-- Box: Plano do Aplicativo -->
-          <div class="bg-gradient-to-br from-domoDark to-[#063b30] rounded-[32px] p-8 text-white relative overflow-hidden shadow-xl flex flex-col justify-between min-h-[300px]">
+          <div class="bg-gradient-to-br from-domoDark to-[#052E26] rounded-[36px] p-8 text-white relative overflow-hidden shadow-xl flex flex-col justify-between min-h-[300px]">
             <div class="absolute right-0 bottom-0 w-44 h-44 bg-domoPrimary/10 rounded-full translate-x-12 translate-y-12 pointer-events-none"></div>
-            <div class="absolute top-4 right-4 bg-domoPrimary text-white font-extrabold text-[10px] uppercase px-3 py-1.5 rounded-full tracking-widest shadow-lg">
-              PLANO ÚNICO ATIVO
+            <div class="absolute top-5 right-5 bg-domoPrimary text-white font-black text-[9px] uppercase px-3 py-1.5 rounded-full tracking-widest shadow-lg">
+              LICENÇA PRO ATIVA
             </div>
 
             <div>
-              <span class="text-xs font-black uppercase text-domoAccent tracking-widest">Produto SaaS</span>
-              <h4 class="text-3xl font-black text-white tracking-tight mt-1">DOMO Pro</h4>
-              <p class="text-emerald-100/75 text-sm font-semibold mt-2 max-w-sm">
-                Uma solução unificada para creches, hotéis e consultórios veterinários. Sem limites de pets cadastrados.
+              <span class="text-xs font-black uppercase text-domoAccent tracking-widest">PREÇO DO PLANO ATUAL</span>
+              <h4 id="planPriceDisplayTitle" class="text-4xl font-black text-white tracking-tight mt-1.5">DOMO Pro — R$ 79,90/mês</h4>
+              <p class="text-emerald-100/75 text-xs font-semibold mt-3 max-w-sm leading-relaxed">
+                Acesso unificado a todas as filiais criadas, com suporte técnico 24h, relatórios em tempo real, diário do tutor, logs de hotelaria e medicamentos.
               </p>
             </div>
 
             <div class="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between mt-6">
               <div>
-                <span class="text-[9px] font-bold text-slate-300 uppercase tracking-widest block">Mensalidade</span>
-                <span class="text-xl font-black text-white">R$ 79,90 <span class="text-xs font-normal text-slate-300">/creche</span></span>
+                <span class="text-[9px] font-bold text-slate-300 uppercase tracking-widest block">MENSALIDADE BASE</span>
+                <span id="planPriceDisplaySub" class="text-xl font-black text-white">R$ 79,90 <span class="text-xs font-normal text-slate-300">/creche</span></span>
               </div>
               <div class="text-right">
-                <span class="text-[9px] font-bold text-slate-300 uppercase tracking-widest block">Acessos</span>
-                <span class="text-xs font-extrabold text-domoAccent uppercase">Pets Ilimitados</span>
+                <span class="text-[9px] font-bold text-slate-300 uppercase tracking-widest block">RECURSOS</span>
+                <span class="text-xs font-black text-domoAccent uppercase">Cadastros Ilimitados</span>
               </div>
             </div>
           </div>
 
           <!-- Box: Ultimas Creches Cadastradas -->
-          <div class="bg-white rounded-[32px] p-6 border border-slate-100 shadow-md space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h4 class="text-sm font-black text-domoDark uppercase tracking-wider">Atividades Recentes</h4>
-              <button onclick="switchTab('creches')" class="text-xs font-bold text-domoPrimary hover:underline">Ver todas</button>
-            </div>
-            
-            <div id="recentActivityList" class="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
-              <!-- Dynamically populated or fallback -->
+          <div class="bg-white rounded-[36px] p-6 border border-slate-150/80 shadow-sm space-y-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h4 class="text-xs font-black text-domoDark uppercase tracking-widest flex items-center gap-1.5">
+                  <span>🛎️</span> Filiações Recentes
+                </h4>
+                <button onclick="switchTab('creches')" class="text-xs font-black text-domoPrimary hover:underline">Ver Todas</button>
+              </div>
+              
+              <div id="recentActivityList" class="space-y-3 mt-3 max-h-[220px] overflow-y-auto pr-1">
+                <!-- Dynamically populated or fallback -->
+              </div>
             </div>
           </div>
 
@@ -340,103 +351,103 @@
       </section>
 
       <!-- ================= SCREEN: CRECHES ================= -->
-      <section id="screen-creches" class="tab-view space-y-6 fade-in hidden">
+      <section id="screen-creches" class="tab-view space-y-6 fade-in hidden text-left">
         
         <!-- SEARCH AND FILTERS BAR -->
-        <div class="bg-white rounded-[24px] p-4 border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="bg-white rounded-[24px] p-4 border border-slate-150/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
           <div class="relative w-full sm:max-w-md">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+              🔍
             </span>
             <input id="crecheSearch" type="text" oninput="filterCreches()" placeholder="Buscar por creche, e-mail ou cidade..."
-              class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-semibold text-sm text-slate-700 focus:border-domoPrimary focus:bg-white transition-all">
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-xs text-slate-700 focus:border-domoPrimary focus:bg-white transition-all">
           </div>
 
-          <div class="flex items-center gap-2 w-full sm:w-auto">
+          <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
             <select id="crecheFilterStatus" onchange="filterCreches()"
-              class="w-full sm:w-auto px-4 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-xs text-domoDark focus:border-domoPrimary cursor-pointer">
-              <option value="all">Filtro: Todos os Status</option>
-              <option value="active">Apenas Ativos</option>
-              <option value="inactive">Apenas Inativos</option>
+              class="w-full sm:w-auto px-4 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-xs text-domoDark focus:border-domoPrimary cursor-pointer">
+              <option value="all">Filtrar: Todos os Status</option>
+              <option value="active">Apenas Creches Ativas</option>
+              <option value="inactive">Apenas Creches Inativas</option>
             </select>
           </div>
         </div>
 
         <!-- TABLE OF CRECHES -->
-        <div class="bg-white rounded-[32px] border border-slate-100 shadow-md overflow-hidden">
+        <div class="bg-white rounded-[32px] border border-slate-150/80 shadow-sm overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
               <thead>
-                <tr class="bg-domoLight/60 text-domoDark uppercase text-[10px] font-black tracking-widest border-b border-slate-100">
+                <tr class="bg-domoLight/60 text-domoDark uppercase text-[9px] font-black tracking-widest border-b border-slate-100">
                   <th class="px-6 py-4.5">Nome / Unidade</th>
-                  <th class="px-6 py-4.5">Contato</th>
-                  <th class="px-6 py-4.5">Cidade</th>
+                  <th class="px-6 py-4.5">Contato do Gestor</th>
+                  <th class="px-6 py-4.5">Cidade Sede</th>
                   <th class="px-6 py-4.5">Data Cadastro</th>
-                  <th class="px-6 py-4.5">Status</th>
-                  <th class="px-6 py-4.5 text-center">Ações</th>
+                  <th class="px-6 py-4.5">Status Acesso</th>
+                  <th class="px-6 py-4.5 text-center">Controles</th>
                 </tr>
               </thead>
-              <tbody id="crechesTableBody" class="divide-y divide-slate-100 text-sm font-semibold text-slate-700">
+              <tbody id="crechesTableBody" class="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
                 <!-- Dynamically Populated -->
               </tbody>
             </table>
           </div>
           <div id="noCrechesFound" class="hidden p-12 text-center">
-            <span class="text-4xl">🔍</span>
-            <p class="text-slate-400 text-sm font-bold mt-2">Nenhuma creche encontrada de acordo com os filtros.</p>
+            <span class="text-3xl">🔍</span>
+            <p class="text-slate-400 text-xs font-black uppercase mt-2">Nenhuma creche ativa localizada.</p>
           </div>
         </div>
       </section>
 
       <!-- ================= SCREEN: ADICIONAR CRECHE ================= -->
-      <section id="screen-adicionar" class="tab-view space-y-6 fade-in hidden">
-        <div class="max-w-2xl bg-white rounded-[32px] p-8 border border-slate-100 shadow-lg relative">
+      <section id="screen-adicionar" class="tab-view space-y-6 fade-in hidden text-left">
+        <div class="max-w-2xl bg-white rounded-[36px] p-8 border border-slate-150/80 shadow-sm relative">
           <div class="mb-6">
-            <span class="text-[10px] font-black bg-domoLight text-domoPrimary px-3 py-1 rounded-full uppercase tracking-wider">Inclusão SaaS</span>
-            <h3 class="text-xl font-black text-domoDark mt-2">Nova Credencial de Empresa</h3>
-            <p class="text-xs text-slate-400 font-bold mt-0.5">Após a criação, o sistema ativa automaticamente os acessos sobre o plano DOMO Pro.</p>
+            <span class="text-[9px] font-black bg-domoLight text-domoPrimary px-3 py-1 rounded-md uppercase tracking-wider">Inclusão SaaS</span>
+            <h3 class="text-2xl font-black text-domoDark mt-2">Adicionar Nova Creche no Sistema</h3>
+            <p class="text-xs text-slate-400 font-bold mt-0.5">Após a confirmação, a creche estará habilitada para logar e usar todos os recursos de hotel, creche e medicamentos.</p>
           </div>
 
           <form id="addCrecheForm" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">Nome da Creche / Pet Shop</label>
-                <input id="addName" type="text" placeholder="Ex: Kahu Care Unidade Pinheiros" required
-                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+                <label class="block text-[10px] font-black text-domoDark uppercase tracking-widest ml-1 mb-1.5">Nome da Creche / Pet Shop</label>
+                <input id="addName" type="text" placeholder="Ex: Creche Recanto do Sol" required
+                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-xs">
               </div>
 
               <div>
-                <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">E-mail do Administrador</label>
-                <input id="addEmail" type="email" placeholder="contato@kahucare.com.br" required
-                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+                <label class="block text-[10px] font-black text-domoDark uppercase tracking-widest ml-1 mb-1.5">E-mail do Administrador</label>
+                <input id="addEmail" type="email" placeholder="gestor@recantodosol.com" required
+                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-xs">
               </div>
 
               <div>
-                <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">WhatsApp / Telefone</label>
-                <input id="addPhone" type="tel" placeholder="(11) 99999-9999" required
-                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+                <label class="block text-[10px] font-black text-domoDark uppercase tracking-widest ml-1 mb-1.5">WhatsApp / Telefone</label>
+                <input id="addPhone" type="tel" placeholder="(11) 98844-3322" required
+                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-xs">
               </div>
 
               <div>
-                <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">Cidade</label>
-                <input id="addCity" type="text" placeholder="São Paulo - SP" required
-                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+                <label class="block text-[10px] font-black text-domoDark uppercase tracking-widest ml-1 mb-1.5">Cidade Sede</label>
+                <input id="addCity" type="text" placeholder="Belo Horizonte - MG" required
+                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-xs">
               </div>
             </div>
 
             <!-- Accent Terms Note -->
-            <div class="bg-domoLight/60 p-4 rounded-2xl border border-domoPrimary/10 text-xs font-bold leading-relaxed text-slate-600">
-              💡 <span class="text-domoDark font-black">Nota:</span> Ao clicar no botão de criação, o sistema irá instanciar o plano de assinatura do cliente no módulo <span class="font-extrabold text-domoPrimary">DOMO Pro (R$ 79,90/mês)</span> estruturando seu vencimento padrão para daqui a 30 dias.
+            <div class="bg-domoLight/60 p-4 rounded-2xl border border-domoPrimary/15 text-xs font-semibold leading-relaxed text-slate-600">
+              💡 <span class="text-domoDark font-black">Nota do Sistema:</span> Ao adicionar a creche, ela é instanciada sob o plano <strong class="text-domoPrimary font-black uppercase">DOMO Pro</strong> no valor configurado de <span id="addFormPlanPriceDisplay" class="font-extrabold text-indigo-600">R$ 79,90/mês</span>. A primeira fatura já é criada automaticamente como quitada para garantir o período inicial de uso da creche.
             </div>
 
             <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
               <button type="button" onclick="switchTab('creches')"
-                class="px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-500 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all">
+                class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all">
                 Cancelar
               </button>
               <button type="submit"
-                class="px-6 py-3.5 bg-domoPrimary hover:bg-domoAccent text-white font-extrabold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md shadow-domoPrimary/20">
-                Criar Unidade e Ativar
+                class="px-6 py-3 bg-domoPrimary hover:bg-domoAccent text-white font-extrabold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md shadow-domoPrimary/20">
+                Criar Unidade e Ativar 🚀
               </button>
             </div>
           </form>
@@ -444,36 +455,40 @@
       </section>
 
       <!-- ================= SCREEN: FINANCEIRO ================= -->
-      <section id="screen-financeiro" class="tab-view space-y-6 fade-in hidden">
+      <section id="screen-financeiro" class="tab-view space-y-6 fade-in hidden text-left">
         
         <!-- FINANCIAL ADVISORY HEADER -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm flex items-center gap-4">
+          <div class="bg-white rounded-[24px] p-6 border border-slate-150/80 shadow-sm flex items-center gap-4">
             <span class="text-3xl p-3 bg-domoLight text-domoPrimary rounded-2xl">💰</span>
             <div>
-              <p class="text-xs font-black uppercase text-slate-400">Total Pago Acumulado</p>
+              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Pago Recebido</p>
               <h4 id="financial-totalPaid" class="text-2xl font-black text-domoPrimary">R$ 0,00</h4>
             </div>
           </div>
           
-          <div class="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm flex items-center gap-4">
-            <span class="text-3xl p-3 bg-amber-100 text-amber-600 rounded-2xl">⏳</span>
+          <div class="bg-white rounded-[24px] p-6 border border-slate-150/80 shadow-sm flex items-center gap-4">
+            <span class="text-3xl p-3 bg-amber-50 text-amber-600 rounded-2xl">⏳</span>
             <div>
-              <p class="text-xs font-black uppercase text-slate-400">Contas Pendentes / Em aberto</p>
+              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Contas Pendentes / Em aberto</p>
               <h4 id="financial-totalPending" class="text-2xl font-black text-amber-600">R$ 0,00</h4>
             </div>
           </div>
         </div>
 
         <!-- TRANSACTIONS REGISTER TABLE -->
-        <div class="bg-white rounded-[32px] border border-slate-100 shadow-md overflow-hidden">
-          <div class="p-6 border-b border-slate-100">
-            <h4 class="text-sm font-black text-domoDark uppercase tracking-wider">Histórico de Mensalidades SaaS (DOMO Pro)</h4>
+        <div class="bg-white rounded-[32px] border border-slate-150/80 shadow-sm overflow-hidden">
+          <div class="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h4 class="text-xs font-black text-domoDark uppercase tracking-widest">Histórico de Cobranças Mensais SaaS</h4>
+              <p class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Clique em "Marcar como Pago" para liquidar cobranças de faturas pendentes</p>
+            </div>
+            <span class="text-[9px] font-black bg-indigo-50 text-indigo-600 border border-indigo-150 px-2.5 py-1 rounded-md uppercase tracking-wider">MODALIDADE: PIX / BOLETO</span>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
               <thead>
-                <tr class="bg-domoLight/60 text-domoDark uppercase text-[10px] font-black tracking-widest border-b border-slate-100">
+                <tr class="bg-domoLight/60 text-domoDark uppercase text-[9px] font-black tracking-widest border-b border-slate-100">
                   <th class="px-6 py-4.5">Cliente / Creche</th>
                   <th class="px-6 py-4.5">Plano Contratado</th>
                   <th class="px-6 py-4.5">Valor Cobrança</th>
@@ -482,7 +497,7 @@
                   <th class="px-6 py-4.5 text-center">Ação Corretiva</th>
                 </tr>
               </thead>
-              <tbody id="financeTableBody" class="divide-y divide-slate-100 text-sm font-semibold text-slate-700">
+              <tbody id="financeTableBody" class="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
                 <!-- Dynamically Populated -->
               </tbody>
             </table>
@@ -490,39 +505,78 @@
         </div>
       </section>
 
-      <!-- ================= SCREEN: CONFIGURACOES ================= -->
-      <section id="screen-configuracoes" class="tab-view space-y-6 fade-in hidden">
-        <div class="max-w-xl bg-white rounded-[32px] p-8 border border-slate-100 shadow-lg">
-          <div class="mb-6 pb-4 border-b border-slate-100">
-            <h3 class="text-xl font-black text-domoDark flex items-center gap-2">
-              <svg class="w-6 h-6 text-domoPrimary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              Segurança do Administrador
-            </h3>
-            <p class="text-xs text-slate-400 font-bold mt-1">Gerencie seu e-mail e modifique a senha mestra de acesso ao ecossistema.</p>
+      <!-- ================= SCREEN: CONFIGURACOES (AJUSTES) ================= -->
+      <section id="screen-configuracoes" class="tab-view space-y-6 fade-in hidden text-left">
+        <div class="max-w-2xl bg-white rounded-[36px] p-8 border border-slate-150/80 shadow-sm space-y-8">
+          
+          <!-- CONFIGURAÇÃO VALOR DA MENSALIDADE (NEW FEATURE - CRITICAL!) -->
+          <div>
+            <div class="mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
+              <span class="text-xl">💰</span>
+              <div>
+                <h3 class="text-lg font-black text-domoDark">Valor da Mensalidade DOMO Pro</h3>
+                <p class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Modifique e controle o valor da assinatura SaaS das creches no sistema</p>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <p class="text-xs text-slate-600 font-semibold leading-relaxed">
+                Insira abaixo o novo preço padrão de assinatura do DOMO Pro. Esta mudança atualizará instantaneamente a precificação exibida no login, nos termos, e será aplicada para novos cadastros e faturas geradas no sistema!
+              </p>
+              
+              <div class="flex flex-col sm:flex-row items-end gap-4 bg-slate-50 p-4.5 rounded-2xl border border-slate-150">
+                <div class="flex-1 w-full">
+                  <label class="block text-[10px] font-black text-domoDark uppercase tracking-widest ml-1 mb-1.5">Mensalidade DOMO Pro (R$)</label>
+                  <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500 font-black text-xs">
+                      R$
+                    </span>
+                    <input id="configMonthlyPrice" type="number" step="0.01" placeholder="79.90"
+                      class="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-250 rounded-xl outline-none font-extrabold text-slate-850 text-xs">
+                  </div>
+                </div>
+                <button type="button" onclick="saveMonthlyPrice()"
+                  class="w-full sm:w-auto px-6 py-3.5 bg-domoPrimary hover:bg-domoAccent text-white font-extrabold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md shadow-domoPrimary/10 shrink-0">
+                  Atualizar Valor 🌟
+                </button>
+              </div>
+            </div>
           </div>
 
-          <form id="configForm" class="space-y-5">
-            <div>
-              <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">E-mail do Administrador</label>
-              <input id="configEmail" type="email" required
-                class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+          <!-- SEGURANÇA GERAL DO ADMINISTRADOR -->
+          <div>
+            <div class="mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
+              <span class="text-xl">⚙️</span>
+              <div>
+                <h3 class="text-lg font-black text-domoDark">Segurança do Administrador</h3>
+                <p class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Gerencie seu e-mail e modifique a senha mestra de acesso ao ecossistema</p>
+              </div>
             </div>
 
-            <div>
-              <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">Nova Senha Mestra</label>
-              <input id="configPassword" type="password" placeholder="Preencha apenas se quiser alterar"
-                class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
-            </div>
+            <form id="configForm" class="space-y-5">
+              <div>
+                <label class="block text-[10px] font-black text-domoDark uppercase tracking-widest ml-1 mb-1.5">E-mail do Administrador</label>
+                <input id="configEmail" type="email" required
+                  class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-xs">
+              </div>
 
-            <div id="configSuccessBanner" class="hidden p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-xs text-center font-bold">
-              ✅ Dados atualizados com sucesso e salvos!
-            </div>
+              <div>
+                <label class="block text-[10px] font-black text-domoDark uppercase tracking-widest ml-1 mb-1.5">Nova Senha Mestra</label>
+                <input id="configPassword" type="password" placeholder="Preencha apenas se quiser alterar"
+                  class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-xs">
+              </div>
 
-            <button type="submit"
-              class="w-full py-4 bg-domoPrimary hover:bg-domoAccent text-white font-extrabold text-sm uppercase tracking-widest rounded-xl shadow-md shadow-domoPrimary/10 transition-all duration-200">
-              Salvar Alterações de Segurança
-            </button>
-          </form>
+              <div id="configSuccessBanner" class="hidden p-3.5 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-700 text-xs text-center font-bold">
+                ✅ Dados salvos com sucesso no sistema local!
+              </div>
+
+              <button type="submit"
+                class="w-full py-4 bg-domoDark hover:bg-[#052E26] text-white font-extrabold text-xs uppercase tracking-widest rounded-xl transition-all duration-200">
+                Salvar Alterações de Segurança 🔒
+              </button>
+            </form>
+          </div>
+
         </div>
       </section>
 
@@ -531,53 +585,53 @@
 
   <!-- ================= DETAIL VIEW MODAL (VER CRECHE) ================= -->
   <div id="detailModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col">
-      <div class="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+    <div class="bg-white rounded-[36px] w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col text-left">
+      <div class="p-6 bg-slate-50 border-b border-slate-150/80 flex items-center justify-between">
         <div>
-          <span class="text-[9px] font-bold text-domoPrimary bg-domoLight px-2 py-0.5 rounded-full uppercase">Prontuário Ativo</span>
+          <span class="text-[9px] font-black text-domoPrimary bg-domoLight px-2.5 py-0.5 rounded-full uppercase tracking-wider">Ficha Cadastral</span>
           <h4 id="modalTitle" class="text-xl font-black text-domoDark mt-1">--</h4>
         </div>
-        <button onclick="closeModal()" class="p-2 bg-slate-200/60 hover:bg-slate-200 text-slate-600 rounded-full transition-all">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        <button onclick="closeModal()" class="p-2.5 bg-slate-200/60 hover:bg-slate-200 text-slate-600 rounded-full transition-all">
+          ✕
         </button>
       </div>
       
       <div class="p-6 space-y-4 flex-1 overflow-y-auto">
         <div class="grid grid-cols-2 gap-4">
-          <div class="bg-slate-50 p-3 rounded-xl">
-            <span class="text-[9px] text-slate-400 block font-bold uppercase">Cidade Sede</span>
-            <span id="modalCity" class="text-sm text-slate-800 font-bold block mt-0.5">--</span>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-150/50">
+            <span class="text-[9px] text-slate-400 block font-black uppercase tracking-wider">Cidade Sede</span>
+            <span id="modalCity" class="text-xs text-slate-800 font-extrabold block mt-0.5">--</span>
           </div>
-          <div class="bg-slate-50 p-3 rounded-xl">
-            <span class="text-[9px] text-slate-400 block font-bold uppercase">Status de Atividade</span>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-150/50">
+            <span class="text-[9px] text-slate-400 block font-black uppercase tracking-wider">Status Acesso</span>
             <span id="modalStatusBadge" class="inline-block text-xs font-black mt-1 px-2.5 py-0.5 rounded-full">--</span>
           </div>
-          <div class="bg-slate-50 p-3 rounded-xl col-span-2">
-            <span class="text-[9px] text-slate-400 block font-bold uppercase">E-mail Administrativo</span>
-            <span id="modalEmail" class="text-sm text-slate-800 font-bold block mt-0.5 break-all">--</span>
+          <div class="bg-slate-50 p-3 rounded-xl col-span-2 border border-slate-150/50">
+            <span class="text-[9px] text-slate-400 block font-black uppercase tracking-wider">E-mail Administrativo</span>
+            <span id="modalEmail" class="text-xs text-slate-800 font-extrabold block mt-0.5 break-all">--</span>
           </div>
-          <div class="bg-slate-50 p-3 rounded-xl">
-            <span class="text-[9px] text-slate-400 block font-bold uppercase">Telefone / WhatsApp</span>
-            <span id="modalPhone" class="text-sm text-slate-800 font-bold block mt-0.5">--</span>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-150/50">
+            <span class="text-[9px] text-slate-400 block font-black uppercase tracking-wider">Telefone / WhatsApp</span>
+            <span id="modalPhone" class="text-xs text-slate-800 font-extrabold block mt-0.5">--</span>
           </div>
-          <div class="bg-slate-50 p-3 rounded-xl">
-            <span class="text-[9px] text-slate-400 block font-bold uppercase">Data de Filiação</span>
-            <span id="modalDate" class="text-sm text-slate-800 font-bold block mt-0.5">--</span>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-150/50">
+            <span class="text-[9px] text-slate-400 block font-black uppercase tracking-wider">Data de Filiação</span>
+            <span id="modalDate" class="text-xs text-slate-800 font-extrabold block mt-0.5">--</span>
           </div>
         </div>
         
-        <div class="bg-domoLight/60 p-4 rounded-xl border border-domoPrimary/10">
-          <span class="text-xs font-black text-domoDark uppercase tracking-wider block mb-2">Resumo Assinatura DOMO Pro</span>
-          <div class="flex items-center justify-between text-xs font-semibold text-slate-600">
-            <span>Mensalidade: R$ 79,90</span>
-            <span class="text-domoPrimary font-black">Pets & Espaço Ilimitados</span>
+        <div class="bg-domoLight/60 p-4.5 rounded-2xl border border-domoPrimary/10">
+          <span class="text-[10px] font-black text-domoDark uppercase tracking-wider block mb-2">Mensalidade Ativa do Plano</span>
+          <div class="flex items-center justify-between text-xs font-bold text-slate-600">
+            <span>Plano Contratado: DOMO Pro</span>
+            <span id="modalPlanPriceDisplay" class="text-domoPrimary font-black">R$ 79,90/mês</span>
           </div>
         </div>
       </div>
       
-      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+      <div class="p-4 bg-slate-50 border-t border-slate-150/80 flex justify-end">
         <button onclick="closeModal()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all">
-          Fechar Visualização
+          Fechar Ficha
         </button>
       </div>
     </div>
@@ -588,7 +642,7 @@
   <script>
     // Initial Mock DB for SaaS Creches and Payments
     const DEFAULT_CRECHES = [
-      { id: 'c1', name: 'Kahu Care Prime', email: 'contato@kahucare.com.br', phone: '(11) 98765-4321', city: 'São Paulo - SP', status: 'active', createdAt: '2026-01-15' },
+      { id: 'c1', name: 'Domo Pet Prime', email: 'contato@domopet.com.br', phone: '(11) 98765-4321', city: 'São Paulo - SP', status: 'active', createdAt: '2026-01-15' },
       { id: 'c2', name: 'Aconchego Pet Care', email: 'atendimento@aconchego.com.br', phone: '(21) 97102-3948', city: 'Rio de Janeiro - RJ', status: 'active', createdAt: '2026-03-04' },
       { id: 'c3', name: 'Creche Ruffus & Amigos', email: 'adm@ruffusamigos.co', phone: '(31) 98845-1200', city: 'Belo Horizonte - MG', status: 'inactive', createdAt: '2026-05-18' },
       { id: 'c4', name: 'Cantinho Dog Resort', email: 'dogs@cantinhdog.net', phone: '(41) 99123-5566', city: 'Curitiba - PR', status: 'active', createdAt: '2026-05-22' },
@@ -611,8 +665,92 @@
     let adminEmail = localStorage.getItem('domo_admin_email') || 'thaisvieiravet@hotmail.com';
     let adminPassword = localStorage.getItem('domo_admin_password') || 'Batata5812';
 
+    // Monthly Price Config (Critical Requirement!)
+    let monthlyPrice = parseFloat(localStorage.getItem('domo_monthly_price')) || 79.90;
+
     // Track active navigation tab
     let currentTab = 'dashboard';
+
+    // Custom Toast Notification System
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      // Animations & modern look
+      toast.className = "flex items-center gap-3.5 px-5 py-4 bg-domoDark border border-emerald-500/10 text-white rounded-[24px] shadow-2xl font-bold text-xs pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0 min-w-[320px] max-w-md";
+      
+      const emoji = type === 'success' ? '✅' : '⚠️';
+      toast.innerHTML = `
+        <span class="text-lg leading-none">${emoji}</span>
+        <div class="flex-1 text-left font-extrabold">${message}</div>
+        <button class="text-white/40 hover:text-white font-black text-xs cursor-pointer ml-1">✕</button>
+      `;
+
+      // Close handler on button
+      toast.querySelector('button').addEventListener('click', () => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        setTimeout(() => toast.remove(), 300);
+      });
+
+      container.appendChild(toast);
+
+      // Trigger transition frame
+      requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+      });
+
+      // Auto dismiss after 4.5s
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(-10px)';
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, 4500);
+    }
+
+    // Save Monthly Price Settings
+    function saveMonthlyPrice() {
+      const priceInput = document.getElementById('configMonthlyPrice');
+      const newPrice = parseFloat(priceInput.value);
+
+      if (isNaN(newPrice) || newPrice <= 0) {
+        showToast('Insira um preço válido maior do que zero!', 'error');
+        return;
+      }
+
+      monthlyPrice = newPrice;
+      localStorage.setItem('domo_monthly_price', newPrice);
+      
+      // Optionally update all pending bills values to match the new pricing strategy immediately!
+      finances.forEach(bill => {
+        if (bill.status === 'pendente') {
+          bill.value = newPrice;
+        }
+      });
+      saveLocalDB();
+
+      // Refresh layout prices representation
+      updatePriceDisplays();
+      recalcSystemStats();
+      
+      showToast(`Valor da mensalidade DOMO Pro atualizado para ${newPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}!`);
+    }
+
+    // Helper to keep pricing labels in sync
+    function updatePriceDisplays() {
+      const formatted = monthlyPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      
+      // Update text variables in UI
+      document.getElementById('loginMonthlyPriceDisplay').innerText = `${formatted}/mês`;
+      document.getElementById('planPriceDisplayTitle').innerText = `DOMO Pro — ${formatted}/mês`;
+      document.getElementById('planPriceDisplaySub').innerHTML = `${formatted} <span class="text-[11px] font-normal text-slate-300">/creche</span>`;
+      document.getElementById('addFormPlanPriceDisplay').innerText = `${formatted}/mês`;
+      document.getElementById('modalPlanPriceDisplay').innerText = `${formatted}/mês`;
+      document.getElementById('configMonthlyPrice').value = monthlyPrice.toFixed(2);
+    }
 
     // Initialization on load
     window.addEventListener('DOMContentLoaded', () => {
@@ -638,6 +776,9 @@
         sidebarMenu.classList.toggle('border-b');
       });
 
+      // Setup prices displays
+      updatePriceDisplays();
+
       // Quick check if session already authenticated in localStorage
       if (sessionStorage.getItem('domo_authenticated') === 'true') {
         showDashboard();
@@ -655,6 +796,7 @@
         sessionStorage.setItem('domo_authenticated', 'true');
         banner.classList.add('hidden');
         showDashboard();
+        showToast(`Bem-vinda de volta ao painel administrativo!`);
       } else {
         banner.classList.remove('hidden');
       }
@@ -665,6 +807,7 @@
       sessionStorage.removeItem('domo_authenticated');
       document.getElementById('appContainer').classList.add('hidden');
       document.getElementById('loginScreen').classList.remove('hidden');
+      showToast('Sessão encerrada com sucesso.');
     }
 
     // Switch view to App Admin state
@@ -753,8 +896,8 @@
       const revenue = paidFinances.reduce((acc, f) => acc + f.value, 0);
       document.getElementById('stat-revenue').innerText = revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-      // Novas creches (registered in current month: June 2026 onwards for testing)
-      const thisMonthCount = creches.filter(c => c.createdAt.includes('2026-06')).length;
+      // Novas creches (registered in current month: June/July 2026 onwards for testing)
+      const thisMonthCount = creches.filter(c => c.createdAt.includes('2026-07') || c.createdAt.includes('2026-06')).length;
       document.getElementById('stat-newThisMonth').innerText = thisMonthCount;
 
       // Financeiro view stats
@@ -780,7 +923,7 @@
 
       sortedByDate.forEach(item => {
         const div = document.createElement('div');
-        div.className = "flex items-center gap-3.5 p-3 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-slate-100/50 transition-all";
+        div.className = "flex items-center gap-3.5 p-3 bg-slate-50 rounded-2xl border border-slate-150/70 hover:bg-slate-100/50 transition-all";
         
         let initial = item.name.substring(0, 2).toUpperCase();
         let dateFormatted = new Date(item.createdAt).toLocaleDateString('pt-BR');
@@ -791,10 +934,10 @@
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-xs font-black text-domoDark truncate">${item.name}</p>
-            <p class="text-[10px] text-slate-400 font-bold">Unidade registrada em ${dateFormatted}</p>
+            <p class="text-[10px] text-slate-400 font-bold">Cadastrado em ${dateFormatted}</p>
           </div>
           <span class="text-[9px] font-black tracking-widest bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-full uppercase">
-            SaaS Ativo
+            ${item.status === 'active' ? 'Ativo' : 'Inativo'}
           </span>
         `;
         parent.appendChild(div);
@@ -817,7 +960,7 @@
 
       list.forEach(creche => {
         const tr = document.createElement('tr');
-        tr.className = "border-b border-slate-100 hover:bg-slate-50/50 transition-all font-semibold";
+        tr.className = "border-b border-slate-100 hover:bg-slate-50/50 transition-all font-semibold text-slate-650";
         
         const statusClass = creche.status === 'active' 
           ? 'bg-emerald-500/15 text-emerald-700 border border-emerald-500/20' 
@@ -832,7 +975,7 @@
         tr.innerHTML = `
           <td class="px-6 py-4">
             <p class="text-slate-900 font-extrabold text-sm">${creche.name}</p>
-            <span class="text-[10px] text-slate-400">ID: ${creche.id}</span>
+            <span class="text-[10px] text-slate-400 font-bold">ID: ${creche.id}</span>
           </td>
           <td class="px-6 py-4 text-xs font-bold text-slate-600">
             <div>${creche.email}</div>
@@ -928,6 +1071,9 @@
       saveLocalDB();
       filterCreches();
       recalcSystemStats();
+
+      const changeWord = creche.status === 'active' ? 'Ativada e Liberada' : 'Desativada e Bloqueada';
+      showToast(`Acesso da creche "${creche.name}" foi ${changeWord} com sucesso!`);
     }
 
     // Add Creche handler
@@ -940,7 +1086,6 @@
 
       const newId = 'c' + (creches.length + 100);
       
-      // Post a June date for testing new registers stats
       const todayISO = new Date();
       const formattedDate = todayISO.toISOString().substring(0, 10);
 
@@ -957,7 +1102,7 @@
       const billObj = {
         id: 'f' + (finances.length + 100),
         crecheId: newId,
-        value: 79.90,
+        value: monthlyPrice, // Uses the active configured monthly SaaS price!
         dueDate: new Date(todayISO.setDate(todayISO.getDate() + 30)).toISOString().substring(0, 10),
         status: 'pago' // activated with trial payment done
       };
@@ -968,7 +1113,7 @@
       saveLocalDB();
       document.getElementById('addCrecheForm').reset();
       
-      alert(`🎉 Creche "${n}" criada e ativada com sucesso no plano DOMO Pro!`);
+      showToast(`🎉 Creche "${n}" criada e ativada com sucesso no plano DOMO Pro!`);
       switchTab('creches');
     }
 
@@ -993,8 +1138,8 @@
         const actionBtn = bill.status === 'pago' 
           ? `<button class="text-xs text-slate-400 font-bold cursor-not-allowed" disabled>Liquidado</button>`
           : `<button onclick="settleInvoice('${bill.id}')"
-              class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-lg shadow-sm transition-all">
-              Marcar como Pago
+              class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] uppercase tracking-widest rounded-xl shadow-sm transition-all">
+              Marcar como Pago 💵
              </button>`;
 
         tr.innerHTML = `
@@ -1025,7 +1170,7 @@
       saveLocalDB();
       renderFinanceTable();
       recalcSystemStats();
-      alert('💰 Cobrança liquidada! A receita foi computada no faturamento global do Dashboard.');
+      showToast('💰 Cobrança liquidada! A receita foi computada no faturamento global do Dashboard.');
     }
 
     // Config form settings save handler
@@ -1049,6 +1194,7 @@
       const banner = document.getElementById('configSuccessBanner');
       banner.classList.remove('hidden');
       setTimeout(() => banner.classList.add('hidden'), 3500);
+      showToast('Configurações de segurança atualizadas com sucesso!');
     }
 
     // Sync state elements with localStorage

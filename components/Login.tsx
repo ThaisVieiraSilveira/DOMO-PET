@@ -101,7 +101,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </a>
           
           <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest pt-2">
-            © {new Date().getFullYear()} DOMO • Gestão Veterinária
+            © {new Date().getFullYear()} DOMO • Sistema Pet
           </p>
         </div>
       </div>

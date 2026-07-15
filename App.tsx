@@ -32,12 +32,9 @@ const App: React.FC = () => {
   const [medicationLogs, setMedicationLogs] = useState<MedicationLog[]>([]);
   const [hotelStays, setHotelStays] = useState<HotelStay[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sheetsWebhookUrl, setSheetsWebhookUrl] = useState<string>(localStorage.getItem('kahu_sheets_url') || '');
-  const [zApiInstanceId, setZApiInstanceId] = useState<string>(localStorage.getItem('kahu_zapi_instance') || '');
-  const [zApiToken, setZApiToken] = useState<string>(localStorage.getItem('kahu_zapi_token') || '');
-  const [zApiClientToken, setZApiClientToken] = useState<string>(localStorage.getItem('kahu_zapi_client_token') || '');
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSync, setLastSync] = useState<string>(localStorage.getItem('kahu_last_sync') || '');
+  const [zApiInstanceId, setZApiInstanceId] = useState<string>(localStorage.getItem('domo_zapi_instance') || '');
+  const [zApiToken, setZApiToken] = useState<string>(localStorage.getItem('domo_zapi_token') || '');
+  const [zApiClientToken, setZApiClientToken] = useState<string>(localStorage.getItem('domo_zapi_client_token') || '');
 
   // Firebase Auth State
   const [user, setUser] = useState<any>(null);
@@ -67,40 +64,39 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  const syncToSheets = async (type: string, data: any) => {
-    if (!sheetsWebhookUrl) return;
-    setIsSyncing(true);
-    try {
-      // Enriquecer os dados com o nome do pet para facilitar a leitura no Sheets
-      const enrichedData = { ...data };
-      if (data.petId) {
-        const pet = pets.find(p => p.id === data.petId);
-        if (pet) {
-          enrichedData.pet_nome = pet.pet_nome;
-        }
-      }
-
-      await fetch(sheetsWebhookUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, data: enrichedData, timestamp: new Date().toISOString() })
-      });
-    } catch (e) {
-      console.error("Erro ao sincronizar com Sheets:", e);
-    } finally {
-      setTimeout(() => setIsSyncing(false), 800);
-    }
-  };
-
   useEffect(() => {
     const init = async () => {
       try {
-        const storedCheck = localStorage.getItem('kahu_checklists');
+        // Migrate old kahu_ localStorage keys to domo_ safely so existing users do not lose their data
+        const oldKeys = [
+          'kahu_master_pets',
+          'kahu_checklists',
+          'kahu_groups',
+          'kahu_medications',
+          'kahu_medication_logs',
+          'kahu_hotel_stays',
+          'kahu_deleted_pets',
+          'kahu_tutor_links',
+          'kahu_activities',
+          'kahu_zapi_instance',
+          'kahu_zapi_token',
+          'kahu_zapi_client_token'
+        ];
+        oldKeys.forEach(key => {
+          const val = localStorage.getItem(key);
+          if (val !== null) {
+            const newKey = key.replace('kahu_', 'domo_');
+            if (localStorage.getItem(newKey) === null) {
+              localStorage.setItem(newKey, val);
+            }
+          }
+        });
+
+        const storedCheck = localStorage.getItem('domo_checklists');
         let localEntries: ChecklistEntry[] = storedCheck ? JSON.parse(storedCheck) : [];
         setChecklists(localEntries);
 
-        const storedGroups = localStorage.getItem('kahu_groups');
+        const storedGroups = localStorage.getItem('domo_groups');
         if (storedGroups) {
           setGroups(JSON.parse(storedGroups));
         } else {
@@ -115,60 +111,18 @@ const App: React.FC = () => {
             { id: 'g_dom', name: 'Matilha de Domingo', petIds: [], color: 'bg-indigo-500' },
           ];
           setGroups(initialGroups);
-          localStorage.setItem('kahu_groups', JSON.stringify(initialGroups));
+          localStorage.setItem('domo_groups', JSON.stringify(initialGroups));
         }
 
-        const storedMeds = localStorage.getItem('kahu_medications');
+        const storedMeds = localStorage.getItem('domo_medications');
         if (storedMeds) setMedications(JSON.parse(storedMeds));
 
-        const storedMedLogs = localStorage.getItem('kahu_medication_logs');
+        const storedMedLogs = localStorage.getItem('domo_medication_logs');
         if (storedMedLogs) setMedicationLogs(JSON.parse(storedMedLogs));
 
-        const storedHotel = localStorage.getItem('kahu_hotel_stays');
+        const storedHotel = localStorage.getItem('domo_hotel_stays');
         if (storedHotel) setHotelStays(JSON.parse(storedHotel));
 
-        // Auto-pull se tiver URL
-        if (sheetsWebhookUrl) {
-          try {
-            console.log("Tentando recuperar dados da nuvem...");
-            const response = await fetch(sheetsWebhookUrl);
-            if (response.ok) {
-              const cloudData = await response.json();
-              if (cloudData) {
-                if (cloudData.pets && cloudData.pets.length > 0) {
-                  localStorage.setItem('kahu_master_pets', JSON.stringify(cloudData.pets));
-                }
-                if (cloudData.checklists) {
-                  setChecklists(cloudData.checklists);
-                  localStorage.setItem('kahu_checklists', JSON.stringify(cloudData.checklists));
-                }
-                if (cloudData.groups) {
-                  setGroups(cloudData.groups);
-                  localStorage.setItem('kahu_groups', JSON.stringify(cloudData.groups));
-                }
-                if (cloudData.medications) {
-                  setMedications(cloudData.medications);
-                  localStorage.setItem('kahu_medications', JSON.stringify(cloudData.medications));
-                }
-                if (cloudData.medicationLogs) {
-                  setMedicationLogs(cloudData.medicationLogs);
-                  localStorage.setItem('kahu_medication_logs', JSON.stringify(cloudData.medicationLogs));
-                }
-                if (cloudData.hotelStays) {
-                  setHotelStays(cloudData.hotelStays);
-                  localStorage.setItem('kahu_hotel_stays', JSON.stringify(cloudData.hotelStays));
-                }
-                
-                const now = new Date().toLocaleString('pt-BR');
-                localStorage.setItem('kahu_last_sync', now);
-                setLastSync(now);
-                console.log("Dados recuperados com sucesso!");
-              }
-            }
-          } catch (autoErr) {
-            console.warn("Auto-pull inicial falhou. Verifique se o Web App permitiu acesso 'Qualquer Pessoa'.");
-          }
-        }
       } catch (e) {
         console.error("Erro ao carregar DOMO:", e);
       } finally {
@@ -178,30 +132,19 @@ const App: React.FC = () => {
     init();
   }, []);
 
-  // Debounced push to master sync
-  const debouncedPush = React.useRef<NodeJS.Timeout | null>(null);
-  const triggerMasterSync = () => {
-    if (debouncedPush.current) clearTimeout(debouncedPush.current);
-    debouncedPush.current = setTimeout(() => {
-      pushMasterSync().catch(console.error);
-    }, 5000); // 5 segundos de delay para acumular mudanças
-  };
-
   const saveChecklist = (entry: ChecklistEntry) => {
     const entryWithTimestamp = { ...entry, updatedAt: new Date().toISOString() };
     setChecklists(prev => {
       const filtered = prev.filter(c => !(c.petId === entry.petId && c.date === entry.date));
       const updated = [...filtered, entryWithTimestamp];
       try {
-        localStorage.setItem('kahu_checklists', JSON.stringify(updated));
+        localStorage.setItem('domo_checklists', JSON.stringify(updated));
       } catch (e) {
         console.error("Erro ao salvar no localStorage:", e);
         alert("Espaço de armazenamento cheio! Por favor, exporte seus dados e limpe o sistema.");
       }
       return updated;
     });
-    syncToSheets('checklist', entryWithTimestamp);
-    triggerMasterSync();
   };
 
   const updatePetMaster = async (updatedPet: Pet) => {
@@ -212,12 +155,6 @@ const App: React.FC = () => {
       await addPet(updatedPet);
     }
 
-    // Auto-sync individual pet record
-    syncToSheets('pet', updatedPet);
-    
-    // Auto-sync full state after structural change
-    triggerMasterSync();
-    
     // Auto-sync with day groups (g_seg, g_ter, etc)
     setGroups(prev => {
       const dayMap: Record<string, string> = {
@@ -246,40 +183,37 @@ const App: React.FC = () => {
         return group;
       });
 
-      localStorage.setItem('kahu_groups', JSON.stringify(updatedGroups));
+      localStorage.setItem('domo_groups', JSON.stringify(updatedGroups));
       return updatedGroups;
     });
   };
 
   const saveGroups = (newGroups: PetGroup[]) => {
     setGroups(newGroups);
-    localStorage.setItem('kahu_groups', JSON.stringify(newGroups));
-    triggerMasterSync();
+    localStorage.setItem('domo_groups', JSON.stringify(newGroups));
   };
 
   const saveMedication = (med: MedicationType) => {
     setMedications(prev => {
       const filtered = prev.filter(m => m.id !== med.id);
       const updated = [...filtered, med];
-      localStorage.setItem('kahu_medications', JSON.stringify(updated));
+      localStorage.setItem('domo_medications', JSON.stringify(updated));
       return updated;
     });
-    triggerMasterSync();
   };
 
   const deleteMedication = (id: string) => {
     setMedications(prev => {
       const updated = prev.filter(m => m.id !== id);
-      localStorage.setItem('kahu_medications', JSON.stringify(updated));
+      localStorage.setItem('domo_medications', JSON.stringify(updated));
       return updated;
     });
     // Also cleanup logs
     setMedicationLogs(prev => {
       const updated = prev.filter(l => l.medicationId !== id);
-      localStorage.setItem('kahu_medication_logs', JSON.stringify(updated));
+      localStorage.setItem('domo_medication_logs', JSON.stringify(updated));
       return updated;
     });
-    triggerMasterSync();
   };
 
   const saveMedicationLog = (log: MedicationLog) => {
@@ -288,36 +222,27 @@ const App: React.FC = () => {
         !(l.medicationId === log.medicationId && l.date === log.date && (l.slot === log.slot || (!l.slot && !log.slot)))
       );
       const updated = [...filtered, log];
-      localStorage.setItem('kahu_medication_logs', JSON.stringify(updated));
+      localStorage.setItem('domo_medication_logs', JSON.stringify(updated));
       return updated;
     });
-    syncToSheets('medication_log', log);
-    triggerMasterSync();
   };
 
   const saveHotelStay = (stay: HotelStay) => {
     setHotelStays(prev => {
       const filtered = prev.filter(s => s.id !== stay.id);
       const updated = [...filtered, stay];
-      localStorage.setItem('kahu_hotel_stays', JSON.stringify(updated));
+      localStorage.setItem('domo_hotel_stays', JSON.stringify(updated));
       return updated;
     });
-    syncToSheets('hotel_stay', stay);
-    triggerMasterSync();
-  };
-
-  const saveSheetsUrl = (url: string) => {
-    setSheetsWebhookUrl(url);
-    localStorage.setItem('kahu_sheets_url', url);
   };
 
   const saveZApiConfig = (instanceId: string, token: string, clientToken: string) => {
     setZApiInstanceId(instanceId);
     setZApiToken(token);
     setZApiClientToken(clientToken);
-    localStorage.setItem('kahu_zapi_instance', instanceId);
-    localStorage.setItem('kahu_zapi_token', token);
-    localStorage.setItem('kahu_zapi_client_token', clientToken);
+    localStorage.setItem('domo_zapi_instance', instanceId);
+    localStorage.setItem('domo_zapi_token', token);
+    localStorage.setItem('domo_zapi_client_token', clientToken);
   };
 
   const saveToLocal = (key: string, data: any) => {
@@ -328,98 +253,21 @@ const App: React.FC = () => {
     }
   };
 
-  const pushMasterSync = async () => {
-    if (!sheetsWebhookUrl) throw new Error("URL da planilha não configurada");
-    
-    // Get fresh data from localStorage or state if possible
-    const masterData = {
-      pets: JSON.parse(localStorage.getItem('kahu_master_pets') || '[]'),
-      checklists: JSON.parse(localStorage.getItem('kahu_checklists') || '[]'),
-      groups: JSON.parse(localStorage.getItem('kahu_groups') || '[]'),
-      medications: JSON.parse(localStorage.getItem('kahu_medications') || '[]'),
-      medicationLogs: JSON.parse(localStorage.getItem('kahu_medication_logs') || '[]'),
-      hotelStays: JSON.parse(localStorage.getItem('kahu_hotel_stays') || '[]'),
-      deletedPets: JSON.parse(localStorage.getItem('kahu_deleted_pets') || '[]')
-    };
-
-    try {
-      await fetch(sheetsWebhookUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'MASTER_SYNC', data: masterData })
-      });
-      const now = new Date().toLocaleString('pt-BR');
-      setLastSync(now);
-      localStorage.setItem('kahu_last_sync', now);
-      return true;
-    } catch (e) {
-      console.error("Erro no Push Master Sync:", e);
-      throw e;
-    }
-  };
-
-  const pullMasterSync = async () => {
-    if (!sheetsWebhookUrl) throw new Error("URL da planilha não configurada");
-    
-    try {
-      const response = await fetch(sheetsWebhookUrl);
-      const cloudData = await response.json();
-      
-      if (cloudData) {
-        if (cloudData.pets) {
-          saveToLocal('kahu_master_pets', cloudData.pets);
-        }
-        if (cloudData.checklists) {
-          setChecklists(cloudData.checklists);
-          saveToLocal('kahu_checklists', cloudData.checklists);
-        }
-        if (cloudData.groups) {
-          setGroups(cloudData.groups);
-          saveToLocal('kahu_groups', cloudData.groups);
-        }
-        if (cloudData.medications) {
-          setMedications(cloudData.medications);
-          saveToLocal('kahu_medications', cloudData.medications);
-        }
-        if (cloudData.medicationLogs) {
-          setMedicationLogs(cloudData.medicationLogs);
-          saveToLocal('kahu_medication_logs', cloudData.medicationLogs);
-        }
-        if (cloudData.hotelStays) {
-          setHotelStays(cloudData.hotelStays);
-          saveToLocal('kahu_hotel_stays', cloudData.hotelStays);
-        }
-        if (cloudData.deletedPets) {
-          saveToLocal('kahu_deleted_pets', cloudData.deletedPets);
-        }
-        const now = new Date().toLocaleString('pt-BR');
-        setLastSync(now);
-        localStorage.setItem('kahu_last_sync', now);
-        return true;
-      }
-      return false;
-    } catch (e) {
-      console.error("Erro no Pull Master Sync:", e);
-      throw e;
-    }
-  };
-
   const deleteHotelStay = (id: string) => {
     setHotelStays(prev => {
       const updated = prev.filter(s => s.id !== id);
-      localStorage.setItem('kahu_hotel_stays', JSON.stringify(updated));
+      localStorage.setItem('domo_hotel_stays', JSON.stringify(updated));
       return updated;
     });
   };
 
   const deletePet = async (petId: string) => {
     // Adiciona ao registro de deletados para persistência
-    const storedDeleted = localStorage.getItem('kahu_deleted_pets');
+    const storedDeleted = localStorage.getItem('domo_deleted_pets');
     const deletedIds: string[] = storedDeleted ? JSON.parse(storedDeleted) : [];
     if (!deletedIds.includes(petId)) {
       const newDeleted = [...deletedIds, petId];
-      localStorage.setItem('kahu_deleted_pets', JSON.stringify(newDeleted));
+      localStorage.setItem('domo_deleted_pets', JSON.stringify(newDeleted));
     }
 
     await deletePetFromFirestore(petId);
@@ -430,7 +278,7 @@ const App: React.FC = () => {
         ...g,
         petIds: g.petIds.filter(id => id !== petId)
       }));
-      localStorage.setItem('kahu_groups', JSON.stringify(newGroups));
+      localStorage.setItem('domo_groups', JSON.stringify(newGroups));
       return newGroups;
     });
   };
@@ -490,12 +338,7 @@ const App: React.FC = () => {
                   hotelStays={hotelStays}
                   onSaveMedicationLog={saveMedicationLog}
                   onUpdatePet={updatePetMaster}
-                  onPullSync={pullMasterSync}
-                  onPushSync={pushMasterSync}
                   onSaveChecklist={saveChecklist}
-                  lastSync={lastSync}
-                  isSyncing={isSyncing}
-                  sheetsWebhookUrl={sheetsWebhookUrl}
                   zApiConfig={{
                     instanceId: zApiInstanceId,
                     token: zApiToken,
@@ -538,10 +381,6 @@ const App: React.FC = () => {
                   medications={medications} 
                   medicationLogs={medicationLogs} 
                   hotelStays={hotelStays} 
-                  sheetsUrl={sheetsWebhookUrl} 
-                  onSaveSheetsUrl={saveSheetsUrl}
-                  onPushSync={pushMasterSync}
-                  onPullSync={pullMasterSync}
                   zApiConfig={{
                     instanceId: zApiInstanceId,
                     token: zApiToken,
