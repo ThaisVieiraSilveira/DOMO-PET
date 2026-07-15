@@ -1,11 +1,9 @@
-<div align="center">
+# DOMO — Sistema Pet
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Sistema de gestão moderno e completo para creches e hotéis pet.
 
-  <h1>Built with AI Studio</h2>
-
-  <p>The fastest path from prompt to production with Gemini.</p>
-
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+## Recursos
+- **Gestão De Unidades / Creches**: Controle total das unidades registradas sob o plano SaaS.
+- **Checklists Interativos**: Controle diário de alimentação, água, fezes e observações diretamente pelos monitores de pátio.
+- **Monitoramento de Saúde**: Histórico detalhado de medicações ministradas, horários e observações.
+- **Visualizador e Gerador de Relatórios**: Exportação simplificada para o Google Sheets e painéis claros para os médicos veterinários e gestores.

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DOMO — Sistema Pet</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐶</text></svg>">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontSize: {
+            'xs': ['0.85rem', { lineHeight: '1.25rem' }],
+            'sm': ['0.95rem', { lineHeight: '1.5rem' }],
+            'base': ['1.1rem', { lineHeight: '1.75rem' }],
+            'lg': ['1.25rem', { lineHeight: '1.8rem' }],
+            'xl': ['1.4rem', { lineHeight: '2rem' }],
+            '2xl': ['1.65rem', { lineHeight: '2.25rem' }],
+            '3xl': ['2.0rem', { lineHeight: '2.5rem' }],
+            '4xl': ['2.5rem', { lineHeight: '2.75rem' }],
+            '5xl': ['3.25rem', { lineHeight: '1' }],
+            '6xl': ['4.0rem', { lineHeight: '1' }]
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    html {
+      font-size: 16.5px !important; /* Increase root rem baseline for slightly bigger paddings, margins, and sizes globally */
+    }
+    body { 
+      font-family: 'Quicksand', sans-serif; 
+      background-color: #FDFBF7; 
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    /* Set default font-weight to 500 for enhanced legibility of the Quicksand rounded typeface */
+    body, p, span, div, input, select, textarea, button, label {
+      font-weight: 500;
+    }
+    /* Automatically scale up legacy hardcoded absolute tiny sizes to be highly accessible and readable */
+    .text-\[8px\] { font-size: 11px !important; }
+    .text-\[9px\] { font-size: 12px !important; }
+    .text-\[10px\] { font-size: 13.5px !important; }
+    .text-\[11px\] { font-size: 14px !important; }
+    .text-\[12px\] { font-size: 14.5px !important; }
+    .text-\[13px\] { font-size: 15px !important; }
+    .text-\[14px\] { font-size: 15.5px !important; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@^19.2.4",
+      "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+      "react/": "https://esm.sh/react@^19.2.4/",
+      "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0"
+    }
+  }
+  </script>
+
+  <link rel="stylesheet" href="/index.css" />
+</head>
+
+<body class="text-slate-800">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

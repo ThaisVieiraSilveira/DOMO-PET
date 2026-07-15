@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DOMO — Painel Administrativo SaaS</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts for rounded typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Nunito', 'sans-serif'],
+          },
+          colors: {
+            domoBg: '#F0FAF6',      /* General background: very light mint green */
+            domoPrimary: '#1D9E75', /* Primary button and highlights: medium green */
+            domoDark: '#085041',    /* Dark menu and texts: dark green */
+            domoLight: '#E6F6F0',   /* Soft highlight container */
+            domoAccent: '#2EC492',  /* Vibrant accent green */
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Customs scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F0FAF6;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1D9E75;
+      border-radius: 99px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #085041;
+    }
+    /* Simple transitions */
+    .fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-domoBg text-domoDark h-full flex flex-col font-sans overflow-x-hidden antialiased selection:bg-domoPrimary selection:text-white">
+
+  <!-- ================= TELA DE LOGIN ================= -->
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-[32px] shadow-2xl p-8 border border-white/50 relative overflow-hidden">
+      <!-- Decorative circles -->
+      <div class="absolute -top-12 -right-12 w-32 h-32 bg-domoLight rounded-full opacity-60 pointer-events-none"></div>
+      <div class="absolute -bottom-16 -left-16 w-40 h-40 bg-domoBg rounded-full opacity-80 pointer-events-none"></div>
+      
+      <div class="relative z-10">
+        <!-- Logo -->
+        <div class="flex flex-col items-center text-center mb-8">
+          <div class="w-16 h-16 bg-domoLight rounded-2xl flex items-center justify-center mb-3 shadow-inner">
+            <svg class="w-10 h-10 text-domoPrimary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <h1 class="text-3xl font-black tracking-tight text-domoDark flex items-center justify-center gap-1.5">
+            DOMO <span class="text-xs font-black bg-domoPrimary text-white px-2 py-0.5 rounded-full uppercase tracking-wider">SaaS</span>
+          </h1>
+          <p class="text-sm text-slate-500 font-semibold mt-1">Portal Administrativo — Domo Sistema Pet</p>
+        </div>
+
+        <!-- Notification banner inside Login -->
+        <div id="loginBanner" class="hidden mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-xs text-center font-bold">
+          E-mail ou senha incorretos!
+        </div>
+
+        <!-- Form -->
+        <form id="loginForm" class="space-y-5">
+          <div>
+            <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">E-mail do Administrador</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+              </span>
+              <input id="loginEmail" type="email" placeholder="thaisvieiravet@hotmail.com" value="thaisvieiravet@hotmail.com" required
+                class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-slate-700 transition focus:border-domoPrimary focus:bg-white text-sm">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">Senha de Acesso</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2V10a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+              </span>
+              <input id="loginPassword" type="password" placeholder="••••••••" value="Batata5812" required
+                class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none font-bold text-slate-700 transition focus:border-domoPrimary focus:bg-white text-sm">
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-xs font-bold pt-1">
+            <label class="flex items-center gap-2 cursor-pointer text-slate-500">
+              <input type="checkbox" checked class="rounded border-slate-200 text-domoPrimary focus:ring-domoPrimary w-4 h-4">
+              Manter conectado
+            </label>
+            <span class="text-domoPrimary hover:underline cursor-pointer">Esqueceu a senha?</span>
+          </div>
+
+          <button type="submit" 
+            class="w-full mt-4 py-4 bg-domoPrimary hover:bg-domoAccent text-white font-extrabold text-sm uppercase tracking-widest rounded-2xl shadow-lg shadow-domoPrimary/20 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0">
+            Acessar Painel Admin
+          </button>
+        </form>
+
+        <div class="text-center mt-6 text-xs text-slate-400 font-semibold">
+          Plano Ativo: <span class="text-domoDark font-bold">DOMO Pro — R$79,90/mês</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= PAINEL ADMINISTRATIVO COM MENU LATERAL ================= -->
+  <div id="appContainer" class="hidden h-screen flex flex-col md:flex-row overflow-hidden w-full">
+    
+    <!-- MOBILE HEADER RAIL -->
+    <div class="md:hidden bg-domoDark text-white p-4 flex items-center justify-between border-b border-domoPrimary/10 shadow-md">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-domoPrimary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <span class="text-lg font-black tracking-tight text-white">DOMO <span class="text-[9px] bg-domoPrimary px-1.5 py-0.5 rounded-full uppercase font-black">SaaS</span></span>
+      </div>
+      <button id="mobileMenuBtn" class="p-2 bg-white/5 rounded-xl hover:bg-white/10 text-white transition focus:outline-none">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+      </button>
+    </div>
+
+    <!-- SIDEBAR MENU LEFT -->
+    <aside id="sidebarMenu" class="hidden md:flex flex-col w-72 bg-domoDark text-white h-full relative z-30 shrink-0 border-r border-domoPrimary/10">
+      <!-- Header Sidebar -->
+      <div class="p-6 flex items-center gap-3 border-b border-white/5">
+        <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center shadow-lg">
+          <svg class="w-7 h-7 text-domoAccent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-xl font-black tracking-tight text-white">DOMO</h2>
+          <span class="text-[9px] font-bold uppercase tracking-widest bg-domoPrimary/20 text-domoAccent px-2 py-0.5 rounded-full">Painel Admin</span>
+        </div>
+      </div>
+
+      <!-- Navigation Menu links -->
+      <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+        <button id="menu-dashboard" onclick="switchTab('dashboard')"
+          class="menu-item w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm tracking-tight transition text-left text-slate-300 hover:bg-white/5 hover:text-white">
+          <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077l1.41-.513m14.095-5.13l1.41-.513M5.106 17.785l1.15-.827m11.379-8.16l1.15-.827M8.14 21.27l.707-1.03m7.45-.808l.707-1.03M12 3v1.5m0 15V21" /></svg>
+          Dashboard Central
+        </button>
+
+        <button id="menu-creches" onclick="switchTab('creches')"
+          class="menu-item w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm tracking-tight transition text-left text-slate-300 hover:bg-white/5 hover:text-white">
+          <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+          Gerenciar Creches
+        </button>
+
+        <button id="menu-adicionar" onclick="switchTab('adicionar')"
+          class="menu-item w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm tracking-tight transition text-left text-slate-300 hover:bg-white/5 hover:text-white">
+          <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          Adicionar Creche
+        </button>
+
+        <button id="menu-financeiro" onclick="switchTab('financeiro')"
+          class="menu-item w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm tracking-tight transition text-left text-slate-300 hover:bg-white/5 hover:text-white">
+          <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          Controle Financeiro
+        </button>
+
+        <button id="menu-configuracoes" onclick="switchTab('configuracoes')"
+          class="menu-item w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm tracking-tight transition text-left text-slate-300 hover:bg-white/5 hover:text-white">
+          <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          Ajustes Gerais
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer User Account -->
+      <div class="p-4 border-t border-white/5 bg-black/10">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-domoPrimary flex items-center justify-center font-bold text-white shadow-sm">
+            AD
+          </div>
+          <div class="flex-1 overflow-hidden">
+            <p id="adminUserEmailDisplay" class="text-xs font-black truncate text-white">admin@domo.com.br</p>
+            <span class="text-[9px] font-bold py-0.5 text-domoAccent uppercase">Administrador Master</span>
+          </div>
+          <button id="logoutBtn" title="Sair do Sistema" class="p-2 hover:bg-slate-700 rounded-xl text-slate-300 hover:text-white transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN ROOT CONTENT HOLDER -->
+    <main class="flex-1 h-full overflow-y-auto bg-domoBg p-6 md:p-10">
+      
+      <!-- HEADING ACCENT -->
+      <header class="flex items-center justify-between mb-8 border-b border-white pb-6">
+        <div>
+          <h1 id="viewTitle" class="text-3xl font-black tracking-tight text-domoDark">Painel do Administrador</h1>
+          <p id="viewSubtitle" class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Métricas e performance globais do DOMO SaaS</p>
+        </div>
+        
+        <!-- Quick System Status Badge -->
+        <div class="hidden sm:flex items-center gap-3">
+          <div class="p-2.5 bg-white rounded-2xl flex items-center gap-2 shadow-sm border border-slate-100">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Ambiente: Produção</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- ================= SCREEN: DASHBOARD ================= -->
+      <section id="screen-dashboard" class="tab-view space-y-8 fade-in">
+        
+        <!-- METRICS ROW CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <!-- Card Creches Ativas -->
+          <div class="bg-white rounded-[28px] p-6 border border-slate-100 shadow-md relative overflow-hidden transition-all duration-300 hover:-translate-y-1">
+            <div class="absolute right-0 top-0 w-24 h-24 bg-domoLight rounded-full translate-x-4 -translate-y-4 opacity-50 pointer-events-none"></div>
+            <div class="relative z-10 flex flex-col justify-between h-full">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-xs font-black uppercase text-slate-400 tracking-wider">Creches Ativas</span>
+                <span class="p-2.5 bg-domoLight text-domoPrimary rounded-xl">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                </span>
+              </div>
+              <div>
+                <h3 id="stat-activeCount" class="text-4xl font-extrabold text-domoDark tracking-tight">0</h3>
+                <p id="stat-activePercent" class="text-slate-500 font-bold text-xs mt-1">100% de ocupação ativa</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Receita Mensal -->
+          <div class="bg-white rounded-[28px] p-6 border border-slate-100 shadow-md relative overflow-hidden transition-all duration-300 hover:-translate-y-1">
+            <div class="absolute right-0 top-0 w-24 h-24 bg-emerald-50 rounded-full translate-x-4 -translate-y-4 opacity-50 pointer-events-none"></div>
+            <div class="relative z-10 flex flex-col justify-between h-full">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-xs font-black uppercase text-slate-400 tracking-wider">Faturamento Estimado</span>
+                <span class="p-2.5 bg-emerald-100 text-domoPrimary rounded-xl">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </span>
+              </div>
+              <div>
+                <h3 id="stat-revenue" class="text-4xl font-extrabold text-domoDark tracking-tight">R$ 0,00</h3>
+                <p class="text-slate-500 font-bold text-xs mt-1">Soma das mensalidades pagas</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Novas Creches -->
+          <div class="bg-white rounded-[28px] p-6 border border-slate-100 shadow-md relative overflow-hidden transition-all duration-300 hover:-translate-y-1">
+            <div class="absolute right-0 top-0 w-24 h-24 bg-teal-50 rounded-full translate-x-4 -translate-y-4 opacity-50 pointer-events-none"></div>
+            <div class="relative z-10 flex flex-col justify-between h-full">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-xs font-black uppercase text-slate-400 tracking-wider">Novas Creches (Este Mês)</span>
+                <span class="p-2.5 bg-teal-100 text-teal-700 rounded-xl">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </span>
+              </div>
+              <div>
+                <h3 id="stat-newThisMonth" class="text-4xl font-extrabold text-domoDark tracking-tight">0</h3>
+                <p class="text-slate-500 font-bold text-xs mt-1">Registradas em Junho/2026</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RECENT ACTIVITY ROW AND QUICK VIEW -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          <!-- Box: Plano do Aplicativo -->
+          <div class="bg-gradient-to-br from-domoDark to-[#063b30] rounded-[32px] p-8 text-white relative overflow-hidden shadow-xl flex flex-col justify-between min-h-[300px]">
+            <div class="absolute right-0 bottom-0 w-44 h-44 bg-domoPrimary/10 rounded-full translate-x-12 translate-y-12 pointer-events-none"></div>
+            <div class="absolute top-4 right-4 bg-domoPrimary text-white font-extrabold text-[10px] uppercase px-3 py-1.5 rounded-full tracking-widest shadow-lg">
+              PLANO ÚNICO ATIVO
+            </div>
+
+            <div>
+              <span class="text-xs font-black uppercase text-domoAccent tracking-widest">Produto SaaS</span>
+              <h4 class="text-3xl font-black text-white tracking-tight mt-1">DOMO Pro</h4>
+              <p class="text-emerald-100/75 text-sm font-semibold mt-2 max-w-sm">
+                Uma solução unificada para creches, hotéis e consultórios veterinários. Sem limites de pets cadastrados.
+              </p>
+            </div>
+
+            <div class="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between mt-6">
+              <div>
+                <span class="text-[9px] font-bold text-slate-300 uppercase tracking-widest block">Mensalidade</span>
+                <span class="text-xl font-black text-white">R$ 79,90 <span class="text-xs font-normal text-slate-300">/creche</span></span>
+              </div>
+              <div class="text-right">
+                <span class="text-[9px] font-bold text-slate-300 uppercase tracking-widest block">Acessos</span>
+                <span class="text-xs font-extrabold text-domoAccent uppercase">Pets Ilimitados</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Box: Ultimas Creches Cadastradas -->
+          <div class="bg-white rounded-[32px] p-6 border border-slate-100 shadow-md space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h4 class="text-sm font-black text-domoDark uppercase tracking-wider">Atividades Recentes</h4>
+              <button onclick="switchTab('creches')" class="text-xs font-bold text-domoPrimary hover:underline">Ver todas</button>
+            </div>
+            
+            <div id="recentActivityList" class="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
+              <!-- Dynamically populated or fallback -->
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ================= SCREEN: CRECHES ================= -->
+      <section id="screen-creches" class="tab-view space-y-6 fade-in hidden">
+        
+        <!-- SEARCH AND FILTERS BAR -->
+        <div class="bg-white rounded-[24px] p-4 border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="relative w-full sm:max-w-md">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </span>
+            <input id="crecheSearch" type="text" oninput="filterCreches()" placeholder="Buscar por creche, e-mail ou cidade..."
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-semibold text-sm text-slate-700 focus:border-domoPrimary focus:bg-white transition-all">
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <select id="crecheFilterStatus" onchange="filterCreches()"
+              class="w-full sm:w-auto px-4 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-xs text-domoDark focus:border-domoPrimary cursor-pointer">
+              <option value="all">Filtro: Todos os Status</option>
+              <option value="active">Apenas Ativos</option>
+              <option value="inactive">Apenas Inativos</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- TABLE OF CRECHES -->
+        <div class="bg-white rounded-[32px] border border-slate-100 shadow-md overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-domoLight/60 text-domoDark uppercase text-[10px] font-black tracking-widest border-b border-slate-100">
+                  <th class="px-6 py-4.5">Nome / Unidade</th>
+                  <th class="px-6 py-4.5">Contato</th>
+                  <th class="px-6 py-4.5">Cidade</th>
+                  <th class="px-6 py-4.5">Data Cadastro</th>
+                  <th class="px-6 py-4.5">Status</th>
+                  <th class="px-6 py-4.5 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="crechesTableBody" class="divide-y divide-slate-100 text-sm font-semibold text-slate-700">
+                <!-- Dynamically Populated -->
+              </tbody>
+            </table>
+          </div>
+          <div id="noCrechesFound" class="hidden p-12 text-center">
+            <span class="text-4xl">🔍</span>
+            <p class="text-slate-400 text-sm font-bold mt-2">Nenhuma creche encontrada de acordo com os filtros.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN: ADICIONAR CRECHE ================= -->
+      <section id="screen-adicionar" class="tab-view space-y-6 fade-in hidden">
+        <div class="max-w-2xl bg-white rounded-[32px] p-8 border border-slate-100 shadow-lg relative">
+          <div class="mb-6">
+            <span class="text-[10px] font-black bg-domoLight text-domoPrimary px-3 py-1 rounded-full uppercase tracking-wider">Inclusão SaaS</span>
+            <h3 class="text-xl font-black text-domoDark mt-2">Nova Credencial de Empresa</h3>
+            <p class="text-xs text-slate-400 font-bold mt-0.5">Após a criação, o sistema ativa automaticamente os acessos sobre o plano DOMO Pro.</p>
+          </div>
+
+          <form id="addCrecheForm" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">Nome da Creche / Pet Shop</label>
+                <input id="addName" type="text" placeholder="Ex: Kahu Care Unidade Pinheiros" required
+                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+              </div>
+
+              <div>
+                <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">E-mail do Administrador</label>
+                <input id="addEmail" type="email" placeholder="contato@kahucare.com.br" required
+                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+              </div>
+
+              <div>
+                <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">WhatsApp / Telefone</label>
+                <input id="addPhone" type="tel" placeholder="(11) 99999-9999" required
+                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+              </div>
+
+              <div>
+                <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">Cidade</label>
+                <input id="addCity" type="text" placeholder="São Paulo - SP" required
+                  class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+              </div>
+            </div>
+
+            <!-- Accent Terms Note -->
+            <div class="bg-domoLight/60 p-4 rounded-2xl border border-domoPrimary/10 text-xs font-bold leading-relaxed text-slate-600">
+              💡 <span class="text-domoDark font-black">Nota:</span> Ao clicar no botão de criação, o sistema irá instanciar o plano de assinatura do cliente no módulo <span class="font-extrabold text-domoPrimary">DOMO Pro (R$ 79,90/mês)</span> estruturando seu vencimento padrão para daqui a 30 dias.
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <button type="button" onclick="switchTab('creches')"
+                class="px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-500 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all">
+                Cancelar
+              </button>
+              <button type="submit"
+                class="px-6 py-3.5 bg-domoPrimary hover:bg-domoAccent text-white font-extrabold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md shadow-domoPrimary/20">
+                Criar Unidade e Ativar
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN: FINANCEIRO ================= -->
+      <section id="screen-financeiro" class="tab-view space-y-6 fade-in hidden">
+        
+        <!-- FINANCIAL ADVISORY HEADER -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm flex items-center gap-4">
+            <span class="text-3xl p-3 bg-domoLight text-domoPrimary rounded-2xl">💰</span>
+            <div>
+              <p class="text-xs font-black uppercase text-slate-400">Total Pago Acumulado</p>
+              <h4 id="financial-totalPaid" class="text-2xl font-black text-domoPrimary">R$ 0,00</h4>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm flex items-center gap-4">
+            <span class="text-3xl p-3 bg-amber-100 text-amber-600 rounded-2xl">⏳</span>
+            <div>
+              <p class="text-xs font-black uppercase text-slate-400">Contas Pendentes / Em aberto</p>
+              <h4 id="financial-totalPending" class="text-2xl font-black text-amber-600">R$ 0,00</h4>
+            </div>
+          </div>
+        </div>
+
+        <!-- TRANSACTIONS REGISTER TABLE -->
+        <div class="bg-white rounded-[32px] border border-slate-100 shadow-md overflow-hidden">
+          <div class="p-6 border-b border-slate-100">
+            <h4 class="text-sm font-black text-domoDark uppercase tracking-wider">Histórico de Mensalidades SaaS (DOMO Pro)</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-domoLight/60 text-domoDark uppercase text-[10px] font-black tracking-widest border-b border-slate-100">
+                  <th class="px-6 py-4.5">Cliente / Creche</th>
+                  <th class="px-6 py-4.5">Plano Contratado</th>
+                  <th class="px-6 py-4.5">Valor Cobrança</th>
+                  <th class="px-6 py-4.5">Data Vencimento</th>
+                  <th class="px-6 py-4.5">Status Pagamento</th>
+                  <th class="px-6 py-4.5 text-center">Ação Corretiva</th>
+                </tr>
+              </thead>
+              <tbody id="financeTableBody" class="divide-y divide-slate-100 text-sm font-semibold text-slate-700">
+                <!-- Dynamically Populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SCREEN: CONFIGURACOES ================= -->
+      <section id="screen-configuracoes" class="tab-view space-y-6 fade-in hidden">
+        <div class="max-w-xl bg-white rounded-[32px] p-8 border border-slate-100 shadow-lg">
+          <div class="mb-6 pb-4 border-b border-slate-100">
+            <h3 class="text-xl font-black text-domoDark flex items-center gap-2">
+              <svg class="w-6 h-6 text-domoPrimary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              Segurança do Administrador
+            </h3>
+            <p class="text-xs text-slate-400 font-bold mt-1">Gerencie seu e-mail e modifique a senha mestra de acesso ao ecossistema.</p>
+          </div>
+
+          <form id="configForm" class="space-y-5">
+            <div>
+              <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">E-mail do Administrador</label>
+              <input id="configEmail" type="email" required
+                class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+            </div>
+
+            <div>
+              <label class="block text-xs font-black text-domoDark uppercase tracking-wider ml-1 mb-1.5">Nova Senha Mestra</label>
+              <input id="configPassword" type="password" placeholder="Preencha apenas se quiser alterar"
+                class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-slate-700 focus:border-domoPrimary focus:bg-white transition-all text-sm">
+            </div>
+
+            <div id="configSuccessBanner" class="hidden p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-xs text-center font-bold">
+              ✅ Dados atualizados com sucesso e salvos!
+            </div>
+
+            <button type="submit"
+              class="w-full py-4 bg-domoPrimary hover:bg-domoAccent text-white font-extrabold text-sm uppercase tracking-widest rounded-xl shadow-md shadow-domoPrimary/10 transition-all duration-200">
+              Salvar Alterações de Segurança
+            </button>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ================= DETAIL VIEW MODAL (VER CRECHE) ================= -->
+  <div id="detailModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col">
+      <div class="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <span class="text-[9px] font-bold text-domoPrimary bg-domoLight px-2 py-0.5 rounded-full uppercase">Prontuário Ativo</span>
+          <h4 id="modalTitle" class="text-xl font-black text-domoDark mt-1">--</h4>
+        </div>
+        <button onclick="closeModal()" class="p-2 bg-slate-200/60 hover:bg-slate-200 text-slate-600 rounded-full transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      
+      <div class="p-6 space-y-4 flex-1 overflow-y-auto">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-slate-50 p-3 rounded-xl">
+            <span class="text-[9px] text-slate-400 block font-bold uppercase">Cidade Sede</span>
+            <span id="modalCity" class="text-sm text-slate-800 font-bold block mt-0.5">--</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl">
+            <span class="text-[9px] text-slate-400 block font-bold uppercase">Status de Atividade</span>
+            <span id="modalStatusBadge" class="inline-block text-xs font-black mt-1 px-2.5 py-0.5 rounded-full">--</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl col-span-2">
+            <span class="text-[9px] text-slate-400 block font-bold uppercase">E-mail Administrativo</span>
+            <span id="modalEmail" class="text-sm text-slate-800 font-bold block mt-0.5 break-all">--</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl">
+            <span class="text-[9px] text-slate-400 block font-bold uppercase">Telefone / WhatsApp</span>
+            <span id="modalPhone" class="text-sm text-slate-800 font-bold block mt-0.5">--</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl">
+            <span class="text-[9px] text-slate-400 block font-bold uppercase">Data de Filiação</span>
+            <span id="modalDate" class="text-sm text-slate-800 font-bold block mt-0.5">--</span>
+          </div>
+        </div>
+        
+        <div class="bg-domoLight/60 p-4 rounded-xl border border-domoPrimary/10">
+          <span class="text-xs font-black text-domoDark uppercase tracking-wider block mb-2">Resumo Assinatura DOMO Pro</span>
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-600">
+            <span>Mensalidade: R$ 79,90</span>
+            <span class="text-domoPrimary font-black">Pets & Espaço Ilimitados</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+        <button onclick="closeModal()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all">
+          Fechar Visualização
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= CORE FRONTEND LOGIC JS ================= -->
+  <script>
+    // Initial Mock DB for SaaS Creches and Payments
+    const DEFAULT_CRECHES = [
+      { id: 'c1', name: 'Kahu Care Prime', email: 'contato@kahucare.com.br', phone: '(11) 98765-4321', city: 'São Paulo - SP', status: 'active', createdAt: '2026-01-15' },
+      { id: 'c2', name: 'Aconchego Pet Care', email: 'atendimento@aconchego.com.br', phone: '(21) 97102-3948', city: 'Rio de Janeiro - RJ', status: 'active', createdAt: '2026-03-04' },
+      { id: 'c3', name: 'Creche Ruffus & Amigos', email: 'adm@ruffusamigos.co', phone: '(31) 98845-1200', city: 'Belo Horizonte - MG', status: 'inactive', createdAt: '2026-05-18' },
+      { id: 'c4', name: 'Cantinho Dog Resort', email: 'dogs@cantinhdog.net', phone: '(41) 99123-5566', city: 'Curitiba - PR', status: 'active', createdAt: '2026-05-22' },
+      { id: 'c5', name: 'Patinhas Felizes Estadia', email: 'financeiro@patinhasfelizes.com.br', phone: '(19) 98234-0011', city: 'Campinas - SP', status: 'active', createdAt: '2026-06-01' }
+    ];
+
+    const DEFAULT_FINANCES = [
+      { id: 'f1', crecheId: 'c1', value: 79.90, dueDate: '2026-06-15', status: 'pago' },
+      { id: 'f2', crecheId: 'c2', value: 79.90, dueDate: '2026-06-04', status: 'pago' },
+      { id: 'f3', crecheId: 'c3', value: 79.90, dueDate: '2026-06-18', status: 'pendente' },
+      { id: 'f4', crecheId: 'c4', value: 79.90, dueDate: '2026-06-22', status: 'pendente' },
+      { id: 'f5', crecheId: 'c5', value: 79.90, dueDate: '2026-07-01', status: 'pago' }
+    ];
+
+    // Local state loaded from localStorage or initialized with defaults
+    let creches = JSON.parse(localStorage.getItem('domo_creches')) || DEFAULT_CRECHES;
+    let finances = JSON.parse(localStorage.getItem('domo_finances')) || DEFAULT_FINANCES;
+    
+    // Admin credentials
+    let adminEmail = localStorage.getItem('domo_admin_email') || 'thaisvieiravet@hotmail.com';
+    let adminPassword = localStorage.getItem('domo_admin_password') || 'Batata5812';
+
+    // Track active navigation tab
+    let currentTab = 'dashboard';
+
+    // Initialization on load
+    window.addEventListener('DOMContentLoaded', () => {
+      // Setup dynamic placeholders in profiles
+      document.getElementById('configEmail').value = adminEmail;
+      document.getElementById('adminUserEmailDisplay').innerText = adminEmail;
+
+      // Listeners
+      document.getElementById('loginForm').addEventListener('submit', handleLogin);
+      document.getElementById('addCrecheForm').addEventListener('submit', handleAddCreche);
+      document.getElementById('configForm').addEventListener('submit', handleSaveConfig);
+      document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+
+      // Mobile Menu Trigger Toggle
+      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+      const sidebarMenu = document.getElementById('sidebarMenu');
+      mobileMenuBtn.addEventListener('click', () => {
+        sidebarMenu.classList.toggle('hidden');
+        sidebarMenu.classList.toggle('absolute');
+        sidebarMenu.classList.toggle('w-full');
+        sidebarMenu.classList.toggle('h-auto');
+        sidebarMenu.classList.toggle('bottom-0');
+        sidebarMenu.classList.toggle('border-b');
+      });
+
+      // Quick check if session already authenticated in localStorage
+      if (sessionStorage.getItem('domo_authenticated') === 'true') {
+        showDashboard();
+      }
+    });
+
+    // Login Submission Handler
+    function handleLogin(e) {
+      e.preventDefault();
+      const emailInput = document.getElementById('loginEmail').value.trim();
+      const passwordInput = document.getElementById('loginPassword').value;
+      const banner = document.getElementById('loginBanner');
+
+      if (emailInput === adminEmail && passwordInput === adminPassword) {
+        sessionStorage.setItem('domo_authenticated', 'true');
+        banner.classList.add('hidden');
+        showDashboard();
+      } else {
+        banner.classList.remove('hidden');
+      }
+    }
+
+    // Logout Helper
+    function handleLogout() {
+      sessionStorage.removeItem('domo_authenticated');
+      document.getElementById('appContainer').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+    }
+
+    // Switch view to App Admin state
+    function showDashboard() {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('appContainer').classList.remove('hidden');
+      
+      // Update displays
+      document.getElementById('adminUserEmailDisplay').innerText = adminEmail;
+      
+      // Refresh Lists & Totals
+      recalcSystemStats();
+      switchTab('dashboard');
+    }
+
+    // Navigation Switch tabs engine
+    function switchTab(tabId) {
+      currentTab = tabId;
+      
+      // Hide all tabs
+      document.querySelectorAll('.tab-view').forEach(view => {
+        view.classList.add('hidden');
+      });
+
+      // Deactivate all menu buttons
+      document.querySelectorAll('.menu-item').forEach(btn => {
+        btn.classList.remove('bg-domoPrimary', 'text-white');
+        btn.classList.add('text-slate-300', 'hover:bg-white/5', 'hover:text-white');
+      });
+
+      // Show selected tab
+      const targetView = document.getElementById(`screen-${tabId}`);
+      if (targetView) {
+        targetView.classList.remove('hidden');
+      }
+
+      // Highlight active menu button
+      const targetBtn = document.getElementById(`menu-${tabId}`);
+      if (targetBtn) {
+        targetBtn.classList.remove('text-slate-300', 'hover:bg-white/5', 'hover:text-white');
+        targetBtn.classList.add('bg-domoPrimary', 'text-white');
+      }
+
+      // Dynamic Title & Description Updates based on active Screen
+      const titles = {
+        'dashboard': { title: 'Dashboard Central', sub: 'Métricas e performance globais do DOMO SaaS' },
+        'creches': { title: 'Gestão de Creches', sub: 'Lista completa de clientes e status de atividade das unidades' },
+        'adicionar': { title: 'Adicionar Creche', sub: 'Cadastre uma nova credencial e atribua o plano DOMO Pro' },
+        'financeiro': { title: 'Controle Financeiro', sub: 'Cobranças mensais, pagamentos efetuados e faturas pendentes' },
+        'configuracoes': { title: 'Ajustes Gerais', sub: 'Segurança mestra e dados cadastrais do Administrador' }
+      };
+
+      if (titles[tabId]) {
+        document.getElementById('viewTitle').innerText = titles[tabId].title;
+        document.getElementById('viewSubtitle').innerText = titles[tabId].sub;
+      }
+
+      // Render respective screen lists
+      if (tabId === 'creches') renderCrechesTable();
+      if (tabId === 'financeiro') renderFinanceTable();
+      if (tabId === 'dashboard') {
+        recalcSystemStats();
+        renderRecentActivities();
+      }
+
+      // Close mobile menu if wide
+      const sidebarMenu = document.getElementById('sidebarMenu');
+      if (window.innerWidth < 768) {
+        sidebarMenu.classList.add('hidden');
+        sidebarMenu.classList.remove('absolute', 'w-full', 'h-auto', 'bottom-0', 'border-b');
+      }
+    }
+
+    // Calculate main calculations values
+    function recalcSystemStats() {
+      // Total active units
+      const activeCount = creches.filter(c => c.status === 'active').length;
+      document.getElementById('stat-activeCount').innerText = activeCount;
+      
+      const totalCount = creches.length;
+      const pct = totalCount > 0 ? Math.round((activeCount / totalCount) * 100) : 0;
+      document.getElementById('stat-activePercent').innerText = `${pct}% de taxa de atividade (${totalCount} cadastradas no total)`;
+
+      // Faturamento Estimado (Monthly Revenue from paid DOMO Pro bills)
+      const paidFinances = finances.filter(f => f.status === 'pago');
+      const revenue = paidFinances.reduce((acc, f) => acc + f.value, 0);
+      document.getElementById('stat-revenue').innerText = revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+      // Novas creches (registered in current month: June 2026 onwards for testing)
+      const thisMonthCount = creches.filter(c => c.createdAt.includes('2026-06')).length;
+      document.getElementById('stat-newThisMonth').innerText = thisMonthCount;
+
+      // Financeiro view stats
+      const totalPaidVal = finances.filter(f => f.status === 'pago').reduce((acc, f) => acc + f.value, 0);
+      const totalPendVal = finances.filter(f => f.status === 'pendente').reduce((acc, f) => acc + f.value, 0);
+
+      document.getElementById('financial-totalPaid').innerText = totalPaidVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      document.getElementById('financial-totalPending').innerText = totalPendVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    // Activities Log feed Renderer
+    function renderRecentActivities() {
+      const parent = document.getElementById('recentActivityList');
+      parent.innerHTML = '';
+
+      // Merge creches registration events plus mock entries for visual fidelity
+      const sortedByDate = [...creches].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      if (sortedByDate.length === 0) {
+        parent.innerHTML = '<p class="text-xs font-semibold text-slate-400">Nenhum evento registrado ainda.</p>';
+        return;
+      }
+
+      sortedByDate.forEach(item => {
+        const div = document.createElement('div');
+        div.className = "flex items-center gap-3.5 p-3 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-slate-100/50 transition-all";
+        
+        let initial = item.name.substring(0, 2).toUpperCase();
+        let dateFormatted = new Date(item.createdAt).toLocaleDateString('pt-BR');
+
+        div.innerHTML = `
+          <div class="w-9 h-9 rounded-xl bg-domoLight text-domoPrimary font-black flex items-center justify-center text-xs">
+            ${initial}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-black text-domoDark truncate">${item.name}</p>
+            <p class="text-[10px] text-slate-400 font-bold">Unidade registrada em ${dateFormatted}</p>
+          </div>
+          <span class="text-[9px] font-black tracking-widest bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-full uppercase">
+            SaaS Ativo
+          </span>
+        `;
+        parent.appendChild(div);
+      });
+    }
+
+    // Creches main list renderer
+    function renderCrechesTable(customList = null) {
+      const list = customList || creches;
+      const target = document.getElementById('crechesTableBody');
+      const errBox = document.getElementById('noCrechesFound');
+      
+      target.innerHTML = '';
+
+      if (list.length === 0) {
+        errBox.classList.remove('hidden');
+        return;
+      }
+      errBox.classList.add('hidden');
+
+      list.forEach(creche => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-slate-50/50 transition-all font-semibold";
+        
+        const statusClass = creche.status === 'active' 
+          ? 'bg-emerald-500/15 text-emerald-700 border border-emerald-500/20' 
+          : 'bg-rose-500/15 text-rose-700 border border-rose-500/20';
+        
+        const statusLabel = creche.status === 'active' ? '● Ativo' : '○ Inativo';
+        const toggleBtnLabel = creche.status === 'active' ? 'Desativar' : 'Ativar';
+        const toggleBtnClass = creche.status === 'active' 
+          ? 'text-rose-600 hover:bg-rose-50 border-rose-200' 
+          : 'text-emerald-600 hover:bg-emerald-50 border-emerald-200';
+
+        tr.innerHTML = `
+          <td class="px-6 py-4">
+            <p class="text-slate-900 font-extrabold text-sm">${creche.name}</p>
+            <span class="text-[10px] text-slate-400">ID: ${creche.id}</span>
+          </td>
+          <td class="px-6 py-4 text-xs font-bold text-slate-600">
+            <div>${creche.email}</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">${creche.phone}</div>
+          </td>
+          <td class="px-6 py-4 text-xs font-bold text-slate-700">${creche.city}</td>
+          <td class="px-6 py-4 text-xs text-slate-500">${new Date(creche.createdAt).toLocaleDateString('pt-BR')}</td>
+          <td class="px-6 py-4">
+            <span class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${statusClass}">
+              ${statusLabel}
+            </span>
+          </td>
+          <td class="px-6 py-4">
+            <div class="flex items-center justify-center gap-2">
+              <button onclick="viewCrecheDetails('${creche.id}')"
+                class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-domoDark hover:bg-slate-100 rounded-lg text-xs font-bold tracking-tight transition-all">
+                Ver Ficha
+              </button>
+              <button onclick="toggleCrecheStatus('${creche.id}')"
+                class="px-3 py-1.5 bg-white border rounded-lg text-xs font-black uppercase tracking-wider transition-all ${toggleBtnClass}">
+                ${toggleBtnLabel}
+              </button>
+            </div>
+          </td>
+        `;
+
+        target.appendChild(tr);
+      });
+    }
+
+    // Search and filter operations
+    function filterCreches() {
+      const searchVal = document.getElementById('crecheSearch').value.toLowerCase().trim();
+      const statusFilterVal = document.getElementById('crecheFilterStatus').value;
+
+      let filtered = creches.filter(item => {
+        const matchesSearch = item.name.toLowerCase().includes(searchVal) || 
+                              item.email.toLowerCase().includes(searchVal) || 
+                              item.city.toLowerCase().includes(searchVal);
+        
+        let matchesStatus = true;
+        if (statusFilterVal === 'active') {
+          matchesStatus = item.status === 'active';
+        } else if (statusFilterVal === 'inactive') {
+          matchesStatus = item.status === 'inactive';
+        }
+
+        return matchesSearch && matchesStatus;
+      });
+
+      renderCrechesTable(filtered);
+    }
+
+    // Modal details visualizer
+    function viewCrecheDetails(id) {
+      const creche = creches.find(c => c.id === id);
+      if (!creche) return;
+
+      document.getElementById('modalTitle').innerText = creche.name;
+      document.getElementById('modalCity').innerText = creche.city;
+      document.getElementById('modalEmail').innerText = creche.email;
+      document.getElementById('modalPhone').innerText = creche.phone;
+      document.getElementById('modalDate').innerText = new Date(creche.createdAt).toLocaleDateString('pt-BR');
+
+      const badge = document.getElementById('modalStatusBadge');
+      badge.innerText = creche.status === 'active' ? 'ATIVIDADE REGULAR' : 'CONTA BLOQUEADA';
+      if (creche.status === 'active') {
+        badge.className = "inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20";
+      } else {
+        badge.className = "inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-700 border border-rose-500/20";
+      }
+
+      document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('detailModal').classList.add('hidden');
+    }
+
+    // Toggle active state of SaaS client
+    function toggleCrecheStatus(id) {
+      const creche = creches.find(c => c.id === id);
+      if (!creche) return;
+
+      creche.status = creche.status === 'active' ? 'inactive' : 'active';
+      
+      // Update financial invoice state to correlate if inactive
+      const relatedBill = finances.find(f => f.crecheId === id);
+      if (creche.status === 'inactive' && relatedBill) {
+        relatedBill.status = 'pendente'; // resets paid of inactive ones as caution
+      }
+
+      saveLocalDB();
+      filterCreches();
+      recalcSystemStats();
+    }
+
+    // Add Creche handler
+    function handleAddCreche(e) {
+      e.preventDefault();
+      const n = document.getElementById('addName').value.trim();
+      const em = document.getElementById('addEmail').value.trim();
+      const ph = document.getElementById('addPhone').value.trim();
+      const ct = document.getElementById('addCity').value.trim();
+
+      const newId = 'c' + (creches.length + 100);
+      
+      // Post a June date for testing new registers stats
+      const todayISO = new Date();
+      const formattedDate = todayISO.toISOString().substring(0, 10);
+
+      const crecheObj = {
+        id: newId,
+        name: n,
+        email: em,
+        phone: ph,
+        city: ct,
+        status: 'active',
+        createdAt: formattedDate
+      };
+
+      const billObj = {
+        id: 'f' + (finances.length + 100),
+        crecheId: newId,
+        value: 79.90,
+        dueDate: new Date(todayISO.setDate(todayISO.getDate() + 30)).toISOString().substring(0, 10),
+        status: 'pago' // activated with trial payment done
+      };
+
+      creches.push(crecheObj);
+      finances.push(billObj);
+
+      saveLocalDB();
+      document.getElementById('addCrecheForm').reset();
+      
+      alert(`🎉 Creche "${n}" criada e ativada com sucesso no plano DOMO Pro!`);
+      switchTab('creches');
+    }
+
+    // Finance history table renderer
+    function renderFinanceTable() {
+      const target = document.getElementById('financeTableBody');
+      target.innerHTML = '';
+
+      finances.forEach(bill => {
+        const creche = creches.find(c => c.id === bill.crecheId);
+        if (!creche) return;
+
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-100 hover:bg-slate-50/50 transition-all font-semibold text-slate-700";
+
+        const paymentStatusClass = bill.status === 'pago' 
+          ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20' 
+          : 'bg-amber-500/10 text-amber-700 border border-amber-500/20';
+        
+        const labelText = bill.status === 'pago' ? 'PAGAMENTO OK' : 'PENDENTE';
+        
+        const actionBtn = bill.status === 'pago' 
+          ? `<button class="text-xs text-slate-400 font-bold cursor-not-allowed" disabled>Liquidado</button>`
+          : `<button onclick="settleInvoice('${bill.id}')"
+              class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-lg shadow-sm transition-all">
+              Marcar como Pago
+             </button>`;
+
+        tr.innerHTML = `
+          <td class="px-6 py-4.5">
+            <p class="text-slate-900 font-extrabold text-sm">${creche.name}</p>
+            <span class="text-[10px] text-slate-400">Filial correspondente</span>
+          </td>
+          <td class="px-6 py-4.5 text-xs text-slate-600">DOMO Pro — Ilimitado</td>
+          <td class="px-6 py-4.5 text-xs font-extrabold text-slate-900">${bill.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+          <td class="px-6 py-4.5 text-xs text-slate-500">${new Date(bill.dueDate).toLocaleDateString('pt-BR')}</td>
+          <td class="px-6 py-4.5">
+            <span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full ${paymentStatusClass}">
+              ${labelText}
+            </span>
+          </td>
+          <td class="px-6 py-4.5 text-center">${actionBtn}</td>
+        `;
+        target.appendChild(tr);
+      });
+    }
+
+    // Invoice status settlement trigger
+    function settleInvoice(billId) {
+      const bill = finances.find(f => f.id === billId);
+      if (!bill) return;
+
+      bill.status = 'pago';
+      saveLocalDB();
+      renderFinanceTable();
+      recalcSystemStats();
+      alert('💰 Cobrança liquidada! A receita foi computada no faturamento global do Dashboard.');
+    }
+
+    // Config form settings save handler
+    function handleSaveConfig(e) {
+      e.preventDefault();
+      const em = document.getElementById('configEmail').value.trim();
+      const pw = document.getElementById('configPassword').value;
+
+      adminEmail = em;
+      localStorage.setItem('domo_admin_email', em);
+
+      if (pw.trim() !== '') {
+        adminPassword = pw;
+        localStorage.setItem('domo_admin_password', pw);
+        document.getElementById('configPassword').value = '';
+      }
+
+      // Sync menu representation
+      document.getElementById('adminUserEmailDisplay').innerText = em;
+
+      const banner = document.getElementById('configSuccessBanner');
+      banner.classList.remove('hidden');
+      setTimeout(() => banner.classList.add('hidden'), 3500);
+    }
+
+    // Sync state elements with localStorage
+    function saveLocalDB() {
+      localStorage.setItem('domo_creches', JSON.stringify(creches));
+      localStorage.setItem('domo_finances', JSON.stringify(finances));
+    }
+  </script>
+</body>
+</html>

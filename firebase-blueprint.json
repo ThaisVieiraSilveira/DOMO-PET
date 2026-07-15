@@ -1,0 +1,127 @@
+{
+  "entities": {
+    "Tenant": {
+      "title": "Tenant Configuration",
+      "description": "White-label settings for DOMO creches",
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "description": "Unique identifier of the tenant"
+        },
+        "nome": {
+          "type": "string",
+          "description": "Daycare name"
+        },
+        "cor_primaria": {
+          "type": "string",
+          "description": "Hex value of the primary color"
+        },
+        "logo_url": {
+          "type": "string",
+          "description": "URL of the uploaded PNG logo"
+        },
+        "slug": {
+          "type": "string",
+          "description": "URL slug generated from the name"
+        },
+        "atualizado_em": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp of the latest update"
+        }
+      },
+      "required": ["tenant_id", "nome", "cor_primaria", "slug", "atualizado_em"]
+    },
+    "Pet": {
+      "title": "Pet",
+      "description": "Pet profile, routine, and tutor access settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "pet_nome": { "type": "string" },
+        "tutor_nome": { "type": "string" },
+        "telefone": { "type": "string" },
+        "dia_semana": { "type": "string" },
+        "tutorAccessToken": { "type": "string" },
+        "tutorAccessEnabled": { "type": "boolean" },
+        "tutorAccessCreatedAt": { "type": "string", "format": "date-time" },
+        "tutorAccessUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "pet_nome"]
+    },
+    "TutorAccessLink": {
+      "title": "Tutor Access Link",
+      "description": "Secure access mapping for public pet profiles",
+      "type": "object",
+      "properties": {
+        "crecheId": { "type": "string" },
+        "petId": { "type": "string" },
+        "petNome": { "type": "string" },
+        "tutorNome": { "type": "string" },
+        "tutorWhatsapp": { "type": "string" },
+        "ativo": { "type": "boolean" },
+        "criadoEm": { "type": "string", "format": "date-time" },
+        "atualizadoEm": { "type": "string", "format": "date-time" }
+      },
+      "required": ["crecheId", "petId", "ativo"]
+    },
+    "Moment": {
+      "title": "Moment",
+      "description": "A picture or short video moment captured for a pet",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "categoria": { "type": "string" },
+        "legenda": { "type": "string" },
+        "data": { "type": "string" },
+        "horario": { "type": "string" },
+        "responsavel": { "type": "string" },
+        "visivelTutor": { "type": "boolean" },
+        "tenant_id": { "type": "string" },
+        "criadoEm": { "type": "string" }
+      },
+      "required": ["url", "visivelTutor", "tenant_id"]
+    },
+    "TimelineEvent": {
+      "title": "Timeline Event",
+      "description": "Activity, feeding, medication, or photo event in a pet's daily log",
+      "type": "object",
+      "properties": {
+        "tipo": { "type": "string" },
+        "data": { "type": "string" },
+        "horario": { "type": "string" },
+        "responsavel": { "type": "string" },
+        "texto": { "type": "string" },
+        "imagemUrl": { "type": "string" },
+        "visivelTutor": { "type": "boolean" },
+        "origem": { "type": "string" },
+        "tenant_id": { "type": "string" },
+        "criadoEm": { "type": "string" }
+      },
+      "required": ["tipo", "data", "horario", "responsavel", "visivelTutor"]
+    }
+  },
+  "firestore": {
+    "/tenants/{tenantId}": {
+      "schema": "Tenant",
+      "description": "Collection storing white-label brand definitions"
+    },
+    "/pets/{petId}": {
+      "schema": "Pet",
+      "description": "Collection storing individual pet profiles"
+    },
+    "/tutorAccessLinks/{token}": {
+      "schema": "TutorAccessLink",
+      "description": "Secure tokens mapped to public pet profiles"
+    },
+    "/pets/{petId}/moments/{momentId}": {
+      "schema": "Moment",
+      "description": "Photos of a pet visible on tutor profile"
+    },
+    "/pets/{petId}/timeline/{eventId}": {
+      "schema": "TimelineEvent",
+      "description": "Events in the tutor activity log feed"
+    }
+  }
+}

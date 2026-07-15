@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kahu Care</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #FDFBF7; /* Soft Beige */
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Animações suaves */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+    
+    <!-- Container Principal do App -->
+    <div id="app"></div>
+
+    <!-- Lógica do App em Vanilla JS -->
+    <script>
+        // --- 1. DADOS INICIAIS (MOCK) ---
+        const MASTER_RAW = `PET001|Amélia|SRD|Isabela Franco|11 96939-3354|Quarta|Sim|Come devagar|Não|Ração|Copo medidor|350g|N&D Abóbora|Filhote médio|Sim|Frutas|Recompensa|Moderada|Fácil|Pote específico|Nunca|Não|Sim|Frango|Sim|Doença do carrapato|Ideal|-
+PET002|Aysha|SRD|Natália Tocchini|11 99634-2017|Quinta|Um pouco|Tranquilo|Sachê|Ração|Copo medidor|4 copos|Premier Golden|Adulto|Sim|Sachê|Recompensa|Moderada|Fácil|Trocar água|Frequente|Sim|Não|-|Sim|Doença do carrapato|Acima do peso|-
+PET004|Guga|SRD|Marcela Caetano|11 97035-7601|Quarta|Um pouco|Só acompanhado|Perto|Ração|Copo medidor|100g|Premier|Obesidade|As vezes|Legumes|Não padrão|Bastante|-|-|-|Sim|Frango|Sim|Dmvm|Ideal|-
+PET008|Pétit|Spitz|Camila Caldas|11 96799-3975|Quarta|Muito|Muito rápido|Separado|Mista|No olho|-|Premiere|Light Interno|Sim|Petiscos|Não padrão|Moderada|Fácil|Pote específico|Nunca|Não|Não|-|Não|-|Ideal|-
+PET016|Bilbo|SRD|Renan Stradioto|11 98326-8805|Terça, Quinta|Um pouco|Muito rápido|Sachê|Ração|Peso exato|80g|Royal Canin|Medium Adult|Sim|Sachê|Brincadeiras|Moderada|Fácil|Trocar água|Frequente|Sim|Não|-|Não|-|Ideal|-
+PET024|Gaia|Lhasa|Felipe Vieira|11 98757-5155|Segunda, Terça|Um pouco|Muito rápido|Sachê|Mista|No olho|Scoop|Guabi|Pequeno|As vezes|Petiscos|Recompensa|Moderada|Fácil|Pote específico|Frequente|Não|Não|-|Não|-|Acima do peso|-
+PET032|Leminski|SRD|Ana Paula Hey|11 99902-1245|Terça, Sexta|Um pouco|Só tranquilo|Não|Mista|No olho|350g|N&D Prime|Sem Frango|Sim|Legumes|Não padrão|Bastante|-|-|-|Sim|Frango|Sim|Atópica|Ideal|Sensível
+PET040|Mila Di Milanesa|SRD|Arthur De Martin|11 97610-8475|Terça, Quinta|Um pouco|Tranquilo|Não|Ração|Copo medidor|1 copo|Grand Plus|Médio|Sim|Sachê|Recompensa|Bastante|-|-|-|Sim|Maçã|Não|-|Ideal|-`;
+
+        // --- 2. ESTADO DA APLICAÇÃO ---
+        let state = {
+            pets: [],
+            searchTerm: '',
+            filterType: 'all', // 'all', 'alergia', 'doenca'
+            currentRoute: window.location.hash || '#/'
+        };
+
+        // --- 3. INICIALIZAÇÃO ---
+        function initApp() {
+            const storedPets = localStorage.getItem('kahu_vanilla_pets');
+            if (storedPets) {
+                state.pets = JSON.parse(storedPets);
+            } else {
+                // Parse do CSV mockado
+                state.pets = MASTER_RAW.split('\\n').filter(line => line.trim()).map(line => {
+                    const p = line.split('|');
+                    return {
+                        id: p[0], pet_nome: p[1], raca: p[2], tutor_nome: p[3], 
+                        dia_semana: p[5], tipo_alimentacao: p[9], 
+                        possui_alergia: p[22] || 'Não', possui_doenca: p[24] || 'Não'
+                    };
+                });
+                savePets();
+            }
+            
+            // Escutar mudanças na URL (Navegação)
+            window.addEventListener('hashchange', () => {
+                state.currentRoute = window.location.hash || '#/';
+                render();
+            });
+
+            render();
+        }
+
+        function savePets() {
+            localStorage.setItem('kahu_vanilla_pets', JSON.stringify(state.pets));
+        }
+
+        // --- 4. AÇÕES (FUNÇÕES GLOBAIS) ---
+        window.deletePet = function(id) {
+            state.pets = state.pets.filter(p => p.id !== id);
+            savePets();
+            render();
+        };
+
+        window.setFilter = function(type) {
+            state.filterType = type;
+            render();
+        };
+
+        window.setSearch = function(term) {
+            state.searchTerm = term;
+            render(); // Idealmente usar debounce em apps reais
+        };
+
+        // --- 5. COMPONENTES DE RENDERIZAÇÃO ---
+        
+        function renderHeader() {
+            const isPainel = state.currentRoute === '#/';
+            const isCadastro = state.currentRoute === '#/cadastro';
+
+            return \`
+                <header class="bg-emerald-50 border-b border-emerald-100 py-4 px-6 sticky top-0 z-40">
+                    <div class="max-w-4xl mx-auto flex justify-between items-center">
+                        <a href="#/" class="flex items-center gap-2 group">
+                            <span class="text-3xl group-hover:rotate-12 transition-transform">🐶</span>
+                            <h1 class="text-2xl font-bold text-emerald-800 tracking-tight">Kahu Care</h1>
+                        </a>
+                        
+                        <div class="flex items-center gap-6">
+                            <a href="#/" class="flex items-center gap-1 font-semibold transition-colors \${isPainel ? 'text-emerald-600 underline decoration-2 underline-offset-4' : 'text-slate-500 hover:text-emerald-500'}">
+                                <span>🐾</span> Painel
+                            </a>
+                            <a href="#/cadastro" class="flex items-center gap-1 font-semibold transition-colors \${isCadastro ? 'text-emerald-600 underline decoration-2 underline-offset-4' : 'text-slate-500 hover:text-emerald-500'}">
+                                <span>📝</span> Cadastro
+                            </a>
+                        </div>
+                    </div>
+                </header>
+            \`;
+        }
+
+        function renderFooter() {
+            return \`
+                <footer class="w-full py-6 text-center text-slate-400 text-[10px] uppercase tracking-widest font-bold border-t border-slate-100 bg-white">
+                    <p>© \${new Date().getFullYear()} Kahu Care. Criado por médica veterinária Thais.</p>
+                </footer>
+            \`;
+        }
+
+        function renderDashboard() {
+            return \`
+                <div class="space-y-6 fade-in">
+                    <div class="bg-emerald-600 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-400/20 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                        <div class="relative z-10">
+                            <h2 class="text-4xl font-black tracking-tighter">Olá, Dra. Thais! 👋</h2>
+                            <p class="text-emerald-100 font-bold mt-2">Bem-vinda ao painel de controle Kahu Care.</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-6 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
+                            <div class="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center text-2xl mb-4">🐾</div>
+                            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">Total de Pets</h3>
+                            <p class="text-4xl font-black text-slate-800 mt-1">\${state.pets.length}</p>
+                        </div>
+                        
+                        <a href="#/cadastro" class="bg-[#1a2234] p-6 rounded-3xl shadow-xl border border-slate-800 hover:bg-slate-800 transition-colors group cursor-pointer flex flex-col justify-between">
+                            <div>
+                                <div class="w-12 h-12 bg-white/10 text-sky-400 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">📝</div>
+                                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">Acessar</h3>
+                            </div>
+                            <p class="text-2xl font-black text-white mt-4">Cadastro Kahu &rarr;</p>
+                        </a>
+                    </div>
+                </div>
+            \`;
+        }
+
+        function renderCadastro() {
+            // Filtragem
+            const filteredPets = state.pets.filter(pet => {
+                const matchesSearch = 
+                    pet.pet_nome.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+                    pet.id.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+                    pet.tutor_nome.toLowerCase().includes(state.searchTerm.toLowerCase());
+                
+                const matchesFilter = 
+                    state.filterType === 'all' ||
+                    (state.filterType === 'alergia' && pet.possui_alergia.toLowerCase() === 'sim') ||
+                    (state.filterType === 'doenca' && pet.possui_doenca.toLowerCase() === 'sim');
+
+                return matchesSearch && matchesFilter;
+            });
+
+            // Geração das Linhas da Tabela
+            const tableRows = filteredPets.map(pet => {
+                let badges = '';
+                if (pet.possui_alergia.toLowerCase() === 'sim') {
+                    badges += \`<span class="bg-rose-50 text-rose-500 px-2 py-1 rounded-lg border border-rose-100 text-[8px] font-black uppercase tracking-widest">ALERGIA</span>\`;
+                }
+                if (pet.possui_doenca.toLowerCase() === 'sim') {
+                    badges += \`<span class="bg-amber-50 text-amber-500 px-2 py-1 rounded-lg border border-amber-100 text-[8px] font-black uppercase tracking-widest">DOENÇA</span>\`;
+                }
+                if (pet.possui_alergia.toLowerCase() !== 'sim' && pet.possui_doenca.toLowerCase() !== 'sim') {
+                    badges += \`<span class="text-slate-300 text-[8px] font-black uppercase italic tracking-widest">SAUDÁVEL</span>\`;
+                }
+
+                const dias = pet.dia_semana.split(',').map(d => 
+                    \`<span class="text-[8px] font-black text-emerald-600 uppercase tracking-tighter bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100/50">\${d.trim()}</span>\`
+                ).join('');
+
+                return \`
+                    <tr class="hover:bg-slate-50/50 transition-colors group border-b border-slate-50">
+                        <td class="p-6">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">🐶</div>
+                                <div>
+                                    <p class="font-black text-slate-800 leading-none mb-1 group-hover:text-sky-600 transition-colors">\${pet.pet_nome}</p>
+                                    <p class="text-[10px] font-bold text-slate-300 uppercase tracking-tighter">\${pet.id}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-6">
+                            <p class="text-xs font-black text-slate-700 leading-none mb-1">\${pet.raca}</p>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">\${pet.tutor_nome}</p>
+                        </td>
+                        <td class="p-6">
+                            <div class="flex flex-wrap gap-1">\${dias}</div>
+                        </td>
+                        <td class="p-6">
+                            <span class="text-sky-600 bg-sky-50 px-3 py-1 rounded-xl border border-sky-100 font-black text-[9px] uppercase">\${pet.tipo_alimentacao}</span>
+                        </td>
+                        <td class="p-6">
+                            <div class="flex gap-2">\${badges}</div>
+                        </td>
+                        <td class="p-6">
+                            <div class="flex items-center gap-2">
+                                <button class="flex-grow bg-sky-500 hover:bg-sky-600 text-white py-2 px-4 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-sky-500/20 transition-all" onclick="alert('Ficha do pet \${pet.pet_nome} em desenvolvimento na versão Vanilla.')">
+                                    ABRIR FICHA
+                                </button>
+                                <button onclick="deletePet('\${pet.id}')" class="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-rose-500 hover:text-white rounded-xl border border-slate-100 transition-all shadow-sm group" title="Excluir Pet">
+                                    <span class="group-hover:scale-110 transition-transform">🗑️</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                \`;
+            }).join('');
+
+            return \`
+                <div class="space-y-6 fade-in">
+                    <!-- HEADER ADMINISTRATIVE -->
+                    <div class="bg-[#1a2234] rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-64 h-64 bg-sky-500/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                        <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                            <div>
+                                <h2 class="text-4xl font-black tracking-tighter text-sky-400">Cadastro Kahu</h2>
+                                <p class="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Gestão Central de Prontuários (\${state.pets.length} ativos)</p>
+                            </div>
+                            
+                            <div class="flex flex-wrap items-center gap-3">
+                                <button onclick="setFilter('all')" class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all \${state.filterType === 'all' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10'}">
+                                    TODOS
+                                </button>
+                                <button onclick="setFilter('alergia')" class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 \${state.filterType === 'alergia' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10'}">
+                                    <span class="\${state.filterType === 'alergia' ? 'text-white' : 'text-amber-400'}">⚠️</span> ALERGIAS
+                                </button>
+                                <button onclick="setFilter('doenca')" class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 \${state.filterType === 'doenca' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10'}">
+                                    <span class="\${state.filterType === 'doenca' ? 'text-white' : 'text-purple-400'}">📋</span> DOENÇAS
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEARCH BAR -->
+                    <div class="relative group">
+                        <div class="absolute inset-0 bg-sky-500/5 blur-xl rounded-full group-focus-within:bg-sky-500/10 transition-all"></div>
+                        <input type="text" placeholder="Pesquise por Nome, ID ou Tutor..." value="\${state.searchTerm}" onkeyup="setSearch(this.value)" class="relative w-full pl-14 pr-8 py-5 bg-white rounded-[32px] border-2 border-slate-50 focus:border-sky-300 outline-none transition-all font-black text-slate-700 placeholder:text-slate-300 shadow-xl shadow-slate-200/50 text-base" />
+                        <span class="absolute left-6 top-1/2 -translate-y-1/2 text-2xl opacity-20">🔎</span>
+                    </div>
+
+                    <!-- DATA TABLE -->
+                    <div class="bg-white rounded-[40px] border border-slate-100 shadow-2xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-100">
+                                        <th class="p-6 font-black text-[9px] uppercase tracking-[0.2em] text-slate-400">PET / ID</th>
+                                        <th class="p-6 font-black text-[9px] uppercase tracking-[0.2em] text-slate-400">RAÇA / TUTOR</th>
+                                        <th class="p-6 font-black text-[9px] uppercase tracking-[0.2em] text-slate-400">ESCALA</th>
+                                        <th class="p-6 font-black text-[9px] uppercase tracking-[0.2em] text-slate-400">DIETA</th>
+                                        <th class="p-6 font-black text-[9px] uppercase tracking-[0.2em] text-slate-400">STATUS SAÚDE</th>
+                                        <th class="p-6 font-black text-[9px] uppercase tracking-[0.2em] text-slate-400 text-center">AÇÕES</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    \${tableRows}
+                                </tbody>
+                            </table>
+                            \${filteredPets.length === 0 ? \`
+                                <div class="p-32 text-center flex flex-col items-center justify-center opacity-20">
+                                    <span class="text-7xl mb-4">🔦</span>
+                                    <p class="font-black text-slate-800 uppercase tracking-[0.3em] text-sm">Nenhum pet encontrado.</p>
+                                </div>
+                            \` : ''}
+                        </div>
+                    </div>
+                </div>
+            \`;
+        }
+
+        // --- 6. RENDER PRINCIPAL ---
+        function render() {
+            const appDiv = document.getElementById('app');
+            
+            let pageContent = '';
+            if (state.currentRoute === '#/') {
+                pageContent = renderDashboard();
+            } else if (state.currentRoute === '#/cadastro') {
+                pageContent = renderCadastro();
+            } else {
+                pageContent = renderDashboard(); // Fallback
+            }
+
+            appDiv.innerHTML = \`
+                <div class="min-h-screen flex flex-col">
+                    \${renderHeader()}
+                    <main class="flex-grow max-w-4xl w-full mx-auto p-4 pb-8">
+                        \${pageContent}
+                    </main>
+                    \${renderFooter()}
+                </div>
+            \`;
+        }
+
+        // Iniciar a aplicação
+        initApp();
+    </script>
+</body>
+</html>
