@@ -117,7 +117,7 @@ export function useTenant() {
         let localSlug = localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug;
         let localEmail = localStorage.getItem(LOCAL_STORAGE_KEYS.email) || DEFAULT_VALUES.email;
 
-        if (localNome === 'Bichinhos peludos' || !localLogo || localLogo === '' || localLogo.includes('logo-bichinhos')) {
+        if (localNome === 'Bichinhos peludos') {
           localNome = 'Domo';
           localCor = '#2d512e';
           localLogo = '/logo.svg';
@@ -158,7 +158,7 @@ export function useTenant() {
             let fetchedSlug = data.slug || generateSlug(fetchedNome);
             let fetchedEmail = data.email || data.emailCreche || data.email_creche || DEFAULT_VALUES.email;
 
-            if (fetchedNome === 'Bichinhos peludos' || !fetchedLogo || fetchedLogo === '' || fetchedLogo.includes('logo-bichinhos')) {
+            if (fetchedNome === 'Bichinhos peludos') {
               fetchedNome = 'Domo';
               fetchedCor = '#2d512e';
               fetchedLogo = '/logo.svg';
@@ -212,7 +212,7 @@ export function useTenant() {
             let localSlug = localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug;
             let localEmail = localStorage.getItem(LOCAL_STORAGE_KEYS.email) || DEFAULT_VALUES.email;
 
-            if (localNome === 'Bichinhos peludos' || !localLogo || localLogo === '' || localLogo.includes('logo-bichinhos')) {
+            if (localNome === 'Bichinhos peludos') {
               localNome = 'Domo';
               localCor = '#2d512e';
               localLogo = '/logo.svg';
@@ -351,6 +351,9 @@ export function useTenant() {
 
     // 4. Disparar evento para componentes ativos se atualizarem
     window.dispatchEvent(new Event('domoBrandingChanged'));
+
+    // Mostrar feedback explícito ao usuário de que as alterações foram salvas
+    alert("Configurações e marca salvas com sucesso!");
   };
 
   return { nome, cor, logo, slogan, slug, email, loading, salvar };

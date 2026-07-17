@@ -170,6 +170,8 @@ const Ajustes: React.FC = () => {
       setFilePreview(null);
       setSuccessMsg(`Configurações white-label salvas com sucesso! ${!isFirebaseConfigured ? ' (Salvo Localmente)' : ''}`);
       
+      alert("Configurações e logo salvas com sucesso!");
+
       // Auto-sumir mensagem de sucesso após 4 segundos
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
