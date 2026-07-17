@@ -119,25 +119,33 @@ export function useRegistros() {
       criado_em: new Date().toISOString(),
     };
 
-    // 1. Optimistic local update
-    const updatedRegistros = [newRegistro, ...registros];
-    setRegistros(updatedRegistros);
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEYS.registros, JSON.stringify(updatedRegistros));
-    } catch (e) {
-      console.error(e);
-    }
+    console.log("SALVANDO NO FIRESTORE", {
+      collectionName: "registros",
+      documentId: newId,
+      tenant_id: tenantId,
+      payload: newRegistro
+    });
 
-    // 2. Save in cloud Firestore
+    // 1. Save in cloud Firestore
     if (isFirebaseConfigured && db) {
       try {
         const docRef = doc(db, 'registros', newId);
         logSave('registros', newId, tenantId, newRegistro);
         await setDoc(docRef, newRegistro);
       } catch (error) {
-        console.error("Erro ao salvar registro no Firestore:", error);
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
         throw error;
       }
+    }
+
+    // 2. Only upon success, update state & localStorage
+    const updatedRegistros = [newRegistro, ...registros];
+    setRegistros(updatedRegistros);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.registros, JSON.stringify(updatedRegistros));
+    } catch (e) {
+      console.error(e);
     }
 
     return newRegistro;

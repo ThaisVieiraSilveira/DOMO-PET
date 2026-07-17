@@ -34,13 +34,14 @@ const Settings: React.FC<SettingsProps> = ({
 // Navigation Tabs: 'brand' (Ajustes de Marca), 'tech' (Conectividade e Relatórios) or 'activities' (Atividades)
   const [activeTab, setActiveTab] = useState<'brand' | 'tech' | 'activities'>('brand');
 
-  const { nome, cor, logo, slogan, salvar, loading: tenantLoading } = useTenant();
+  const { nome, cor, logo, slogan, email, salvar, loading: tenantLoading } = useTenant();
 
   // White-Label State variables
   const [domoNome, setDomoNome] = useState('DOMO');
   const [domoSlogan, setDomoSlogan] = useState('Gestão canina de ponta a ponta');
   const [domoCor, setDomoCor] = useState('#085041');
   const [domoLogo, setDomoLogo] = useState('');
+  const [domoEmail, setDomoEmail] = useState('');
   
   // Custom activities state & handlers
   const [activities, setActivities] = useState<{ label: string; emoji: string }[]>([]);
@@ -225,9 +226,10 @@ const Settings: React.FC<SettingsProps> = ({
       setDomoSlogan(slogan);
       setDomoCor(cor);
       setDomoLogo(logo || '');
+      setDomoEmail(email || '');
       setIsLoading(false);
     }
-  }, [nome, cor, logo, slogan, tenantLoading]);
+  }, [nome, cor, logo, slogan, email, tenantLoading]);
 
   useEffect(() => {
     setLocalZApi(zApiConfig);
@@ -293,7 +295,8 @@ const Settings: React.FC<SettingsProps> = ({
       nome: domoNome.trim(),
       cor: domoCor,
       logo: domoLogo,
-      slogan: domoSlogan.trim()
+      slogan: domoSlogan.trim(),
+      email: domoEmail.trim()
     });
 
     setSalvoComSucesso(true);
@@ -305,21 +308,33 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleSaveCommunityGroupLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('domo_community_group_link', communityGroupLink.trim());
     
     if (isFirebaseConfigured && db && auth.currentUser) {
+      const tenantId = auth.currentUser.uid;
       try {
-        const tenantRef = doc(db, 'tenants', auth.currentUser.uid);
+        const tenantRef = doc(db, 'tenants', tenantId);
         const docSnap = await getDoc(tenantRef);
         const currentData = docSnap.exists() ? docSnap.data() : {};
-        await setDoc(tenantRef, {
+        const payload = {
           ...currentData,
-          communityGroupLink: communityGroupLink.trim()
+          communityGroupLink: communityGroupLink.trim(),
+          updatedAt: new Date().toISOString()
+        };
+        console.log("SALVANDO NO FIRESTORE", {
+          collectionName: "tenants",
+          documentId: tenantId,
+          tenant_id: tenantId,
+          payload
         });
+        await setDoc(tenantRef, payload, { merge: true });
       } catch (error) {
-        console.error("Erro ao salvar link da comunidade no Firestore:", error);
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        return;
       }
     }
+    
+    localStorage.setItem('domo_community_group_link', communityGroupLink.trim());
     alert('Link do grupo salvo com sucesso!');
   };
 
@@ -554,7 +569,7 @@ const Settings: React.FC<SettingsProps> = ({
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">1. Identidade da Creche</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nome da Creche / Hotel</label>
                   <input
@@ -574,6 +589,17 @@ const Settings: React.FC<SettingsProps> = ({
                     value={domoSlogan}
                     onChange={(e) => setDomoSlogan(e.target.value)}
                     placeholder="Ex: Gestão e amor pet de ponta a ponta"
+                    className="w-full p-4 bg-[#F9FBFA] border-2 border-[#E7EFEA] rounded-2xl font-bold text-slate-700 outline-none focus:border-emerald-300 transition-all text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">E-mail da Creche / Hotel</label>
+                  <input
+                    type="email"
+                    value={domoEmail}
+                    onChange={(e) => setDomoEmail(e.target.value)}
+                    placeholder="Ex: contato@crechedomo.com"
                     className="w-full p-4 bg-[#F9FBFA] border-2 border-[#E7EFEA] rounded-2xl font-bold text-slate-700 outline-none focus:border-emerald-300 transition-all text-sm"
                   />
                 </div>

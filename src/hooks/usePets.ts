@@ -147,7 +147,27 @@ export function usePets() {
       criado_em: new Date().toISOString(),
     };
 
-    // 1. Save in state & localStorage immediately (Optimistic UI / Offline mode)
+    console.log("SALVANDO NO FIRESTORE", {
+      collectionName: "pets",
+      documentId: newId,
+      tenant_id: tenantId,
+      payload: documentData
+    });
+
+    // 1. Save to Firestore
+    if (isFirebaseConfigured && db) {
+      try {
+        const petDocRef = doc(db, 'pets', newId);
+        logSave('pets', newId, tenantId, documentData);
+        await setDoc(petDocRef, documentData);
+      } catch (error) {
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        throw error;
+      }
+    }
+
+    // 2. Only upon success, save in state & localStorage (or if firebase not configured)
     const updatedPets = [...pets.filter((p) => p.id !== newId), newPet];
     setPets(updatedPets);
     try {
@@ -156,17 +176,6 @@ export function usePets() {
       console.error(e);
     }
 
-    // 2. Save to Firestore
-    if (isFirebaseConfigured && db) {
-      try {
-        const petDocRef = doc(db, 'pets', newId);
-        logSave('pets', newId, tenantId, documentData);
-        await setDoc(petDocRef, documentData);
-      } catch (error) {
-        console.error("Erro ao salvar pet no Firestore:", error);
-        throw error;
-      }
-    }
     return newPet;
   };
 
@@ -183,7 +192,33 @@ export function usePets() {
       id: petId,
     };
 
-    // 1. Save in state & localStorage immediately (Optimistic UI)
+    const dataToSave = {
+      ...updatedPet,
+      tenant_id: tenantId,
+      updatedAt: new Date().toISOString(),
+    };
+
+    console.log("SALVANDO NO FIRESTORE", {
+      collectionName: "pets",
+      documentId: petId,
+      tenant_id: tenantId,
+      payload: dataToSave
+    });
+
+    // 1. Save in Firestore
+    if (isFirebaseConfigured && db) {
+      try {
+        const petDocRef = doc(db, 'pets', petId);
+        logSave('pets', petId, tenantId, dataToSave);
+        await setDoc(petDocRef, dataToSave, { merge: true });
+      } catch (error) {
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        throw error;
+      }
+    }
+
+    // 2. Only upon success, save in state & localStorage (or if firebase not configured)
     const updatedPets = pets.map((p) => (p.id === petId ? updatedPet : p));
     setPets(updatedPets);
     try {
@@ -192,29 +227,32 @@ export function usePets() {
       console.error(e);
     }
 
-    // 2. Save in Firestore
-    if (isFirebaseConfigured && db) {
-      try {
-        const petDocRef = doc(db, 'pets', petId);
-        const dataToSave = {
-          ...updatedPet,
-          tenant_id: tenantId,
-          updatedAt: new Date().toISOString(),
-        };
-        logSave('pets', petId, tenantId, dataToSave);
-        await setDoc(petDocRef, dataToSave, { merge: true });
-      } catch (error) {
-        console.error("Erro ao atualizar pet no Firestore:", error);
-        throw error;
-      }
-    }
     return updatedPet;
   };
 
   const deletePet = async (petId: string) => {
     const tenantId = ensureAuthenticated();
 
-    // 1. Remove from local state & localStorage immediately
+    console.log("DELETANDO NO FIRESTORE", {
+      collectionName: "pets",
+      documentId: petId,
+      tenant_id: tenantId
+    });
+
+    // 1. Remove from Firestore first
+    if (isFirebaseConfigured && db) {
+      try {
+        const petDocRef = doc(db, 'pets', petId);
+        console.log(`Deletando pet ${petId} do Firestore pelo tenant ${tenantId}`);
+        await deleteDoc(petDocRef);
+      } catch (error) {
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        throw error;
+      }
+    }
+
+    // 2. Only upon success, remove from local state & localStorage
     const updatedPets = pets.filter((p) => p.id !== petId);
     setPets(updatedPets);
     try {
@@ -228,18 +266,6 @@ export function usePets() {
       }
     } catch (e) {
       console.error(e);
-    }
-
-    // 2. Remove from Firestore
-    if (isFirebaseConfigured && db) {
-      try {
-        const petDocRef = doc(db, 'pets', petId);
-        console.log(`Deletando pet ${petId} do Firestore pelo tenant ${tenantId}`);
-        await deleteDoc(petDocRef);
-      } catch (error) {
-        console.error("Erro ao deletar pet do Firestore:", error);
-        throw error;
-      }
     }
   };
 

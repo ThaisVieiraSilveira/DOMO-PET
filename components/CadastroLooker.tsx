@@ -527,18 +527,34 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
 
             console.log("Pet importado tenant_id:", petData.tenant_id);
 
+            console.log("SALVANDO NO FIRESTORE", {
+              collectionName: "pets",
+              documentId: pet.id,
+              tenant_id: tenantId,
+              payload: petData
+            });
+
             // Salvar definitivamente no Firebase Firestore com merge
             const petDocRef = doc(db, 'pets', pet.id);
             await setDoc(petDocRef, petData, { merge: true });
 
-            // Salvar tutorAccessLinks com todos os metadados necessários
-            const linkRef = doc(db, 'tutorAccessLinks', token);
-            await setDoc(linkRef, {
+            const linkPayload = {
               petId: pet.id,
               crecheId: user.uid,
               ativo: true,
               atualizadoEm: serverTimestamp()
-            }, { merge: true });
+            };
+
+            console.log("SALVANDO NO FIRESTORE", {
+              collectionName: "tutorAccessLinks",
+              documentId: token,
+              tenant_id: tenantId,
+              payload: linkPayload
+            });
+
+            // Salvar tutorAccessLinks com todos os metadados necessários
+            const linkRef = doc(db, 'tutorAccessLinks', token);
+            await setDoc(linkRef, linkPayload, { merge: true });
 
             // Atualizar também o fallback em local storage
             try {
@@ -562,6 +578,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
             successCount++;
             details.push(`Pet ${pet.pet_nome} (${pet.id}) importado/atualizado com sucesso!`);
           } catch (error: any) {
+            console.error("ERRO FIRESTORE", error);
             console.log('Erro ao salvar pet:', pet.id, error);
             errCount++;
             details.push(`Erro ao importar pet ${pet.pet_nome || pet.id}: ${error instanceof Error ? error.message : String(error)}`);
@@ -728,24 +745,42 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
         token = generateTutorToken();
       }
 
-      // 3. Atualizar o documento do pet no Firestore
-      const petDocRef = doc(db, 'pets', pet.id);
-      await setDoc(petDocRef, {
+      const petPayload = {
         tutorAccessToken: token,
         tutorAccessEnabled: true,
         tenant_id: user.uid,
         tutorAccessUpdatedAt: serverTimestamp()
-      }, { merge: true });
+      };
 
-      // 4. Criar/atualizar tutorAccessLinks no Firestore
-      const linkRef = doc(db, 'tutorAccessLinks', token);
-      await setDoc(linkRef, {
+      console.log("SALVANDO NO FIRESTORE", {
+        collectionName: "pets",
+        documentId: pet.id,
+        tenant_id: user.uid,
+        payload: petPayload
+      });
+
+      // 3. Atualizar o documento do pet no Firestore
+      const petDocRef = doc(db, 'pets', pet.id);
+      await setDoc(petDocRef, petPayload, { merge: true });
+
+      const linkPayload = {
         petId: pet.id,
         crecheId: user.uid,
         ativo: true,
         criadoEm: pet.tutorAccessCreatedAt || serverTimestamp(),
         atualizadoEm: serverTimestamp()
-      }, { merge: true });
+      };
+
+      console.log("SALVANDO NO FIRESTORE", {
+        collectionName: "tutorAccessLinks",
+        documentId: token,
+        tenant_id: user.uid,
+        payload: linkPayload
+      });
+
+      // 4. Criar/atualizar tutorAccessLinks no Firestore
+      const linkRef = doc(db, 'tutorAccessLinks', token);
+      await setDoc(linkRef, linkPayload, { merge: true });
 
       // Fallback para localStorage
       try {

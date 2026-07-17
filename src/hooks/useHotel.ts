@@ -182,15 +182,32 @@ export function useHotel() {
       updatedAt: new Date().toISOString(),
     };
 
-    // Update state & localStorage immediately
+    console.log("SALVANDO NO FIRESTORE", {
+      collectionName: "hotelStays",
+      documentId: newId,
+      tenant_id: tenantId,
+      payload: newStay
+    });
+
+    // 1. Save in Firebase first
+    if (isFirebaseConfigured && db) {
+      try {
+        logSave('hotelStays', newId, tenantId, newStay);
+        await setDoc(doc(db, 'hotelStays', newId), newStay);
+      } catch (error) {
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        throw error;
+      }
+    }
+
+    // 2. Only upon success, update state & localStorage
     const updated = [newStay, ...stays.filter(s => s.id !== newId)];
     setStays(updated);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.stays, JSON.stringify(updated));
-
-    // Save in Firebase
-    if (isFirebaseConfigured && db) {
-      logSave('hotelStays', newId, tenantId, newStay);
-      await setDoc(doc(db, 'hotelStays', newId), newStay);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.stays, JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
     }
 
     return newStay;
@@ -207,15 +224,32 @@ export function useHotel() {
       updatedAt: new Date().toISOString(),
     };
 
-    // Update state & localStorage
+    console.log("SALVANDO NO FIRESTORE", {
+      collectionName: "hotelStays",
+      documentId: stayId,
+      tenant_id: tenantId,
+      payload: updatedStay
+    });
+
+    // 1. Save in Firebase first
+    if (isFirebaseConfigured && db) {
+      try {
+        logSave('hotelStays', stayId, tenantId, updatedStay);
+        await setDoc(doc(db, 'hotelStays', stayId), updatedStay, { merge: true });
+      } catch (error) {
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        throw error;
+      }
+    }
+
+    // 2. Only upon success, update state & localStorage
     const updated = stays.map(s => s.id === stayId ? updatedStay : s);
     setStays(updated);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.stays, JSON.stringify(updated));
-
-    // Save in Firebase
-    if (isFirebaseConfigured && db) {
-      logSave('hotelStays', stayId, tenantId, updatedStay);
-      await setDoc(doc(db, 'hotelStays', stayId), updatedStay, { merge: true });
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.stays, JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
     }
 
     return updatedStay;
@@ -232,15 +266,32 @@ export function useHotel() {
       createdAt: new Date().toISOString(),
     };
 
-    // Update state & localStorage
+    console.log("SALVANDO NO FIRESTORE", {
+      collectionName: "hotelRecords",
+      documentId: newId,
+      tenant_id: tenantId,
+      payload: newRecord
+    });
+
+    // 1. Save in Firebase first
+    if (isFirebaseConfigured && db) {
+      try {
+        logSave('hotelRecords', newId, tenantId, newRecord);
+        await setDoc(doc(db, 'hotelRecords', newId), newRecord);
+      } catch (error) {
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        throw error;
+      }
+    }
+
+    // 2. Only upon success, update state & localStorage
     const updated = [newRecord, ...records];
     setRecords(updated);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.records, JSON.stringify(updated));
-
-    // Save in Firebase
-    if (isFirebaseConfigured && db) {
-      logSave('hotelRecords', newId, tenantId, newRecord);
-      await setDoc(doc(db, 'hotelRecords', newId), newRecord);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.records, JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
     }
 
     return newRecord;
@@ -249,15 +300,31 @@ export function useHotel() {
   const deleteRecord = async (recordId: string) => {
     const tenantId = ensureAuthenticated();
 
-    // Update state & localStorage
+    console.log("DELETANDO NO FIRESTORE", {
+      collectionName: "hotelRecords",
+      documentId: recordId,
+      tenant_id: tenantId
+    });
+
+    // 1. Save in Firebase first
+    if (isFirebaseConfigured && db) {
+      try {
+        console.log(`Deletando registro ${recordId} pelo tenant ${tenantId}`);
+        await deleteDoc(doc(db, 'hotelRecords', recordId));
+      } catch (error) {
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        throw error;
+      }
+    }
+
+    // 2. Only upon success, update state & localStorage
     const updated = records.filter(r => r.id !== recordId);
     setRecords(updated);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.records, JSON.stringify(updated));
-
-    // Save in Firebase
-    if (isFirebaseConfigured && db) {
-      console.log(`Deletando registro ${recordId} pelo tenant ${tenantId}`);
-      await deleteDoc(doc(db, 'hotelRecords', recordId));
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.records, JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -272,15 +339,32 @@ export function useHotel() {
       createdAt: new Date().toISOString(),
     };
 
-    // Update state & localStorage
+    console.log("SALVANDO NO FIRESTORE", {
+      collectionName: "hotelReports",
+      documentId: newId,
+      tenant_id: tenantId,
+      payload: newReport
+    });
+
+    // 1. Save in Firebase first
+    if (isFirebaseConfigured && db) {
+      try {
+        logSave('hotelReports', newId, tenantId, newReport);
+        await setDoc(doc(db, 'hotelReports', newId), newReport);
+      } catch (error) {
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        throw error;
+      }
+    }
+
+    // 2. Only upon success, update state & localStorage
     const updated = [newReport, ...reports.filter(r => r.id !== newId)];
     setReports(updated);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.reports, JSON.stringify(updated));
-
-    // Save in Firebase
-    if (isFirebaseConfigured && db) {
-      logSave('hotelReports', newId, tenantId, newReport);
-      await setDoc(doc(db, 'hotelReports', newId), newReport);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.reports, JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
     }
 
     return newReport;

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { db, auth, isFirebaseConfigured } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, auth, storage, isFirebaseConfigured } from '../firebase';
 import { ensureAuthenticated, logSave, logLoad } from '../../utils/firestore';
 
 const LOCAL_STORAGE_KEYS = {
@@ -10,6 +11,7 @@ const LOCAL_STORAGE_KEYS = {
   logo: 'domo_logo',
   slogan: 'domo_slogan',
   slug: 'domo_slug',
+  email: 'domo_email',
 };
 
 const DEFAULT_VALUES = {
@@ -18,6 +20,7 @@ const DEFAULT_VALUES = {
   logo: '/logo.svg',
   slogan: 'Gestão canina de ponta a ponta',
   slug: 'domo',
+  email: '',
 };
 
 function generateSlug(text: string): string {
@@ -30,6 +33,18 @@ function generateSlug(text: string): string {
     .replace(/\s+/g, '-') // spaces to dashes
     .replace(/\-+/g, '-') // multiple dashes to single
     .trim();
+}
+
+function base64ToBlob(base64: string): Blob {
+  const parts = base64.split(',');
+  const byteString = atob(parts[1]);
+  const mimeString = parts[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type: mimeString });
 }
 
 export function useTenant() {
@@ -62,6 +77,12 @@ export function useTenant() {
     if (storedNome === 'Bichinhos peludos') return 'domo';
     return storedSlug || DEFAULT_VALUES.slug;
   });
+  const [email, setEmail] = useState(() => {
+    const storedNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome);
+    const storedEmail = localStorage.getItem(LOCAL_STORAGE_KEYS.email);
+    if (storedNome === 'Bichinhos peludos') return '';
+    return storedEmail || DEFAULT_VALUES.email;
+  });
   const [loading, setLoading] = useState(true);
 
   // Sync state when branding gets updated from outside
@@ -72,6 +93,7 @@ export function useTenant() {
       setLogo(localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo);
       setSlogan(localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan);
       setSlug(localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug);
+      setEmail(localStorage.getItem(LOCAL_STORAGE_KEYS.email) || DEFAULT_VALUES.email);
     };
 
     window.addEventListener('domoBrandingChanged', handleBrandingChanged);
@@ -93,6 +115,7 @@ export function useTenant() {
         let localLogo = localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo;
         let localSlogan = localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan;
         let localSlug = localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug;
+        let localEmail = localStorage.getItem(LOCAL_STORAGE_KEYS.email) || DEFAULT_VALUES.email;
 
         if (localNome === 'Bichinhos peludos' || !localLogo || localLogo === '' || localLogo.includes('logo-bichinhos')) {
           localNome = 'Domo';
@@ -100,12 +123,14 @@ export function useTenant() {
           localLogo = '/logo.svg';
           localSlogan = 'Gestão canina de ponta a ponta';
           localSlug = 'domo';
+          localEmail = '';
 
           localStorage.setItem(LOCAL_STORAGE_KEYS.nome, localNome);
           localStorage.setItem(LOCAL_STORAGE_KEYS.cor, localCor);
           localStorage.setItem(LOCAL_STORAGE_KEYS.logo, localLogo);
           localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, localSlogan);
           localStorage.setItem(LOCAL_STORAGE_KEYS.slug, localSlug);
+          localStorage.setItem(LOCAL_STORAGE_KEYS.email, localEmail);
         }
 
         setNome(localNome);
@@ -113,6 +138,7 @@ export function useTenant() {
         setLogo(localLogo);
         setSlogan(localSlogan);
         setSlug(localSlug);
+        setEmail(localEmail);
         setLoading(false);
         return;
       }
@@ -126,10 +152,11 @@ export function useTenant() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             let fetchedNome = data.nome || data.nomeCreche || DEFAULT_VALUES.nome;
-            let fetchedCor = data.cor || data.corPrincipal || DEFAULT_VALUES.cor;
-            let fetchedLogo = data.logo || data.logoUrl || DEFAULT_VALUES.logo;
+            let fetchedCor = data.cor || data.corPrincipal || data.cor_primaria || DEFAULT_VALUES.cor;
+            let fetchedLogo = data.logo || data.logoUrl || data.logo_url || DEFAULT_VALUES.logo;
             let fetchedSlogan = data.slogan || DEFAULT_VALUES.slogan;
             let fetchedSlug = data.slug || generateSlug(fetchedNome);
+            let fetchedEmail = data.email || data.emailCreche || data.email_creche || DEFAULT_VALUES.email;
 
             if (fetchedNome === 'Bichinhos peludos' || !fetchedLogo || fetchedLogo === '' || fetchedLogo.includes('logo-bichinhos')) {
               fetchedNome = 'Domo';
@@ -137,6 +164,7 @@ export function useTenant() {
               fetchedLogo = '/logo.svg';
               fetchedSlogan = 'Gestão canina de ponta a ponta';
               fetchedSlug = 'domo';
+              fetchedEmail = '';
 
               const initTenantData = {
                 nome: fetchedNome,
@@ -144,10 +172,15 @@ export function useTenant() {
                 logo: fetchedLogo,
                 slogan: fetchedSlogan,
                 slug: fetchedSlug,
+                email: fetchedEmail,
                 tenant_id: user.uid,
                 nomeCreche: fetchedNome,
                 logoUrl: fetchedLogo,
+                logo_url: fetchedLogo,
                 corPrincipal: fetchedCor,
+                cor_primaria: fetchedCor,
+                emailCreche: fetchedEmail,
+                email_creche: fetchedEmail,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
               };
@@ -161,6 +194,7 @@ export function useTenant() {
             setLogo(fetchedLogo);
             setSlogan(fetchedSlogan);
             setSlug(fetchedSlug);
+            setEmail(fetchedEmail);
 
             // Also keep localStorage updated in sync with cloud
             localStorage.setItem(LOCAL_STORAGE_KEYS.nome, fetchedNome);
@@ -168,6 +202,7 @@ export function useTenant() {
             localStorage.setItem(LOCAL_STORAGE_KEYS.logo, fetchedLogo);
             localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, fetchedSlogan);
             localStorage.setItem(LOCAL_STORAGE_KEYS.slug, fetchedSlug);
+            localStorage.setItem(LOCAL_STORAGE_KEYS.email, fetchedEmail);
           } else {
             // Document doesn't exist yet, load local storage settings
             let localNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome) || DEFAULT_VALUES.nome;
@@ -175,6 +210,7 @@ export function useTenant() {
             let localLogo = localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo;
             let localSlogan = localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan;
             let localSlug = localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug;
+            let localEmail = localStorage.getItem(LOCAL_STORAGE_KEYS.email) || DEFAULT_VALUES.email;
 
             if (localNome === 'Bichinhos peludos' || !localLogo || localLogo === '' || localLogo.includes('logo-bichinhos')) {
               localNome = 'Domo';
@@ -182,12 +218,14 @@ export function useTenant() {
               localLogo = '/logo.svg';
               localSlogan = 'Gestão canina de ponta a ponta';
               localSlug = 'domo';
+              localEmail = '';
 
               localStorage.setItem(LOCAL_STORAGE_KEYS.nome, localNome);
               localStorage.setItem(LOCAL_STORAGE_KEYS.cor, localCor);
               localStorage.setItem(LOCAL_STORAGE_KEYS.logo, localLogo);
               localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, localSlogan);
               localStorage.setItem(LOCAL_STORAGE_KEYS.slug, localSlug);
+              localStorage.setItem(LOCAL_STORAGE_KEYS.email, localEmail);
             }
 
             setNome(localNome);
@@ -195,6 +233,7 @@ export function useTenant() {
             setLogo(localLogo);
             setSlogan(localSlogan);
             setSlug(localSlug);
+            setEmail(localEmail);
           }
         }
       } catch (error: any) {
@@ -217,7 +256,7 @@ export function useTenant() {
     };
   }, []);
 
-  const salvar = async (novosDados: { nome: string; cor: string; logo?: string; slogan?: string }) => {
+  const salvar = async (novosDados: { nome: string; cor: string; logo?: string; slogan?: string; email?: string }) => {
     // Block saving if not logged in
     const tenantId = ensureAuthenticated();
     const finalSlug = generateSlug(novosDados.nome);
@@ -239,38 +278,68 @@ export function useTenant() {
       }
     }
 
+    // Handle robust PNG logo upload to Firebase Storage if configured and it's a Base64 string
+    let finalLogoUrl = novosDados.logo || '';
+    if (finalLogoUrl.startsWith('data:')) {
+      if (isFirebaseConfigured && db) {
+        try {
+          const blob = base64ToBlob(finalLogoUrl);
+          const storageRef = ref(storage, `logos/${tenantId}/logo.png`);
+          await uploadBytes(storageRef, blob);
+          finalLogoUrl = await getDownloadURL(storageRef);
+        } catch (storageErr) {
+          console.error("Erro ao fazer upload do logo para o Firebase Storage:", storageErr);
+        }
+      }
+    }
+
     const dadosParaSalvar = {
       nome: novosDados.nome,
       cor: novosDados.cor,
-      logo: novosDados.logo || '',
+      logo: finalLogoUrl,
       slogan: novosDados.slogan || '',
       slug: finalSlug,
-      // Naming conventions requested by the user
+      email: novosDados.email || '',
+      // Naming conventions and fallback compatibility requested by the user
       tenant_id: tenantId,
       nomeCreche: novosDados.nome,
-      logoUrl: novosDados.logo || '',
+      logoUrl: finalLogoUrl,
+      logo_url: finalLogoUrl,
       corPrincipal: novosDados.cor,
+      cor_primaria: novosDados.cor,
+      emailCreche: novosDados.email || '',
+      email_creche: novosDados.email || '',
       createdAt,
       updatedAt: new Date().toISOString()
     };
 
-    // 1. Gravar no localStorage
+    console.log("SALVANDO NO FIRESTORE", {
+      collectionName: "tenants",
+      documentId: tenantId,
+      tenant_id: tenantId,
+      payload: dadosParaSalvar
+    });
+
+    // 1. Gravar no Firestore se estiver logado e configurado FIRST (Pessimistic UI)
+    if (isFirebaseConfigured && db) {
+      try {
+        const tenantRef = doc(db, 'tenants', tenantId);
+        logSave('tenants', tenantId, tenantId, dadosParaSalvar);
+        await setDoc(tenantRef, dadosParaSalvar, { merge: true });
+      } catch (error) {
+        console.error("ERRO FIRESTORE", error);
+        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        throw error;
+      }
+    }
+
+    // 2. Only upon success, save in localStorage
     localStorage.setItem(LOCAL_STORAGE_KEYS.nome, dadosParaSalvar.nome);
     localStorage.setItem(LOCAL_STORAGE_KEYS.cor, dadosParaSalvar.cor);
     localStorage.setItem(LOCAL_STORAGE_KEYS.logo, dadosParaSalvar.logo);
     localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, dadosParaSalvar.slogan);
     localStorage.setItem(LOCAL_STORAGE_KEYS.slug, dadosParaSalvar.slug);
-
-    // 2. Gravar no Firestore se estiver logado e configurado
-    if (isFirebaseConfigured && db) {
-      try {
-        const tenantRef = doc(db, 'tenants', tenantId);
-        logSave('tenants', tenantId, tenantId, dadosParaSalvar);
-        await setDoc(tenantRef, dadosParaSalvar);
-      } catch (error) {
-        console.error("Erro ao salvar configurações do Tenant:", error);
-      }
-    }
+    localStorage.setItem(LOCAL_STORAGE_KEYS.email, dadosParaSalvar.email);
 
     // 3. Atualizar estados locais
     setNome(dadosParaSalvar.nome);
@@ -278,10 +347,11 @@ export function useTenant() {
     setLogo(dadosParaSalvar.logo);
     setSlogan(dadosParaSalvar.slogan);
     setSlug(dadosParaSalvar.slug);
+    setEmail(dadosParaSalvar.email);
 
     // 4. Disparar evento para componentes ativos se atualizarem
     window.dispatchEvent(new Event('domoBrandingChanged'));
   };
 
-  return { nome, cor, logo, slogan, slug, loading, salvar };
+  return { nome, cor, logo, slogan, slug, email, loading, salvar };
 }

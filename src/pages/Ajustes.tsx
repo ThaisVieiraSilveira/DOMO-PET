@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage, isFirebaseConfigured } from '../firebase';
+import { db, storage, auth, isFirebaseConfigured } from '../firebase';
 
 const COLOR_OPTIONS = [
   { name: 'Esmeralda (Padrão)', value: '#10b981', bgClass: 'bg-emerald-500', textClass: 'text-emerald-500', themeBorder: 'border-emerald-100', themeBg: 'bg-emerald-50' },
@@ -17,6 +17,7 @@ const Ajustes: React.FC = () => {
   const [nome, setNome] = useState('');
   const [corPrimaria, setCorPrimaria] = useState('#10b981');
   const [logoUrl, setLogoUrl] = useState('');
+  const [email, setEmail] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   
@@ -32,14 +33,16 @@ const Ajustes: React.FC = () => {
       setErrorMsg(null);
       try {
         if (isFirebaseConfigured) {
-          const docRef = doc(db, 'tenants', 'default');
+          const tenantId = auth.currentUser?.uid || 'default';
+          const docRef = doc(db, 'tenants', tenantId);
           const docSnap = await getDoc(docRef);
           
           if (docSnap.exists()) {
             const data = docSnap.data();
-            setNome(data.nome || '');
-            setCorPrimaria(data.cor_primaria || '#10b981');
-            setLogoUrl(data.logo_url || '');
+            setNome(data.nome || data.nomeCreche || '');
+            setCorPrimaria(data.cor_primaria || data.cor || '#10b981');
+            setLogoUrl(data.logo_url || data.logo || '');
+            setEmail(data.email || data.emailCreche || data.email_creche || '');
           }
         } else {
           const stored = localStorage.getItem('domo_tenant_settings');
@@ -48,6 +51,7 @@ const Ajustes: React.FC = () => {
             setNome(data.nome || '');
             setCorPrimaria(data.cor_primaria || '#10b981');
             setLogoUrl(data.logo_url || '');
+            setEmail(data.email || '');
           }
         }
       } catch (err: any) {
@@ -85,7 +89,7 @@ const Ajustes: React.FC = () => {
 
     try {
       let finalLogoUrl = logoUrl;
-      const tenantId = 'default';
+      const tenantId = auth.currentUser?.uid || 'default';
 
       // Upload do arquivo PNG para o Firebase Storage ou gravação em Base64
       if (selectedFile) {
@@ -113,21 +117,53 @@ const Ajustes: React.FC = () => {
         .replace(/[^a-z0-9]+/g, '-') // substitui caracteres especiais por hifens
         .replace(/(^-|-$)+/g, ''); // limpa hifens no início e fim
 
-      // Gravação no documento tenants/default do Firestore
+      // Gravação no documento tenants do Firestore com compatibilidade total de propriedades
       const tenantData = {
         tenant_id: tenantId,
         nome: nome.trim(),
         cor_primaria: corPrimaria,
+        cor: corPrimaria,
+        corPrincipal: corPrimaria,
         logo_url: finalLogoUrl,
+        logo: finalLogoUrl,
+        logoUrl: finalLogoUrl,
         slug: slug,
-        atualizado_em: new Date().toISOString()
+        email: email.trim(),
+        emailCreche: email.trim(),
+        email_creche: email.trim(),
+        atualizado_em: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
+      console.log("SALVANDO NO FIRESTORE", {
+        collectionName: "tenants",
+        documentId: tenantId,
+        tenant_id: tenantId,
+        payload: tenantData
+      });
+
       if (isFirebaseConfigured) {
-        await setDoc(doc(db, 'tenants', tenantId), tenantData);
+        try {
+          await setDoc(doc(db, 'tenants', tenantId), tenantData, { merge: true });
+        } catch (error) {
+          console.error("ERRO FIRESTORE", error);
+          alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+          setIsSaving(false);
+          return;
+        }
       } else {
         localStorage.setItem('domo_tenant_settings', JSON.stringify(tenantData));
       }
+
+      // Synchronize standard localStorage brand keys to instantly update Layout & Dashboard
+      localStorage.setItem('domo_nome', nome.trim());
+      localStorage.setItem('domo_cor', corPrimaria);
+      localStorage.setItem('domo_logo', finalLogoUrl);
+      localStorage.setItem('domo_slug', slug);
+      localStorage.setItem('domo_email', email.trim());
+
+      // Trigger global update event
+      window.dispatchEvent(new Event('domoBrandingChanged'));
 
       setLogoUrl(finalLogoUrl);
       setSelectedFile(null);
@@ -167,16 +203,29 @@ const Ajustes: React.FC = () => {
         <form onSubmit={handleSave} className="space-y-6">
           
           {/* Nome da creche */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Nome da Creche / Hotel</label>
-            <input
-              type="text"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: Creche Patas & Cia"
-              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-slate-300 focus:bg-white shadow-sm transition-all focus:ring-0"
-              required
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Nome da Creche / Hotel</label>
+              <input
+                type="text"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Ex: Creche Patas & Cia"
+                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-slate-300 focus:bg-white shadow-sm transition-all focus:ring-0"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">E-mail de Contato da Creche</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Ex: contato@creche.com.br"
+                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-slate-300 focus:bg-white shadow-sm transition-all focus:ring-0"
+              />
+            </div>
           </div>
 
           {/* Seleção de cor principal */}
