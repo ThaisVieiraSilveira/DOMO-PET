@@ -1581,9 +1581,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex flex-wrap items-center gap-3 mt-6">
               <span className="bg-emerald-500 text-white px-4 py-2 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider shadow-sm">ATIVOS: {pets.length}</span>
               <span className="bg-indigo-500 text-white px-4 py-2 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider shadow-sm">Escala hoje ({selectedDay}): {filteredPets.length} cães</span>
-              <span className="bg-[#085041] text-white px-4 py-2 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider shadow-sm flex items-center gap-1.5">
-                <span>🔥</span> Firebase Ativo
-              </span>
             </div>
           </div>
           
