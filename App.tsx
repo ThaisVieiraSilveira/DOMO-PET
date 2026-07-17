@@ -21,8 +21,9 @@ import CadastroPublico from './src/pages/CadastroPublico';
 import PerfilPetPublico from './src/pages/PerfilPetPublico';
 import { usePets } from './src/hooks/usePets';
 import { Pet, ChecklistEntry, PetGroup, Medication as MedicationType, MedicationLog, HotelStay } from './types';
-import { auth } from './src/firebase';
+import { auth, db, isFirebaseConfigured } from './src/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 const App: React.FC = () => {
   const { pets, addPet, updatePet, deletePet: deletePetFromFirestore, loading: petsLoading, loadPetsFromFirestore } = usePets();
@@ -63,6 +64,197 @@ const App: React.FC = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (authLoading) return;
+    
+    let active = true;
+    let unsubChecklists: (() => void) | null = null;
+    let unsubGroups: (() => void) | null = null;
+    let unsubMedications: (() => void) | null = null;
+    let unsubMedicationLogs: (() => void) | null = null;
+    let unsubStays: (() => void) | null = null;
+
+    if (!user || !isFirebaseConfigured || !db) {
+      return;
+    }
+
+    const tenantId = user.uid;
+
+    // 1. Checklists sync
+    try {
+      const checklistsRef = collection(db, 'checklists');
+      const qChecklists = query(checklistsRef, where('tenant_id', '==', tenantId));
+      unsubChecklists = onSnapshot(qChecklists, async (snapshot) => {
+        if (!active) return;
+        const fetched: ChecklistEntry[] = [];
+        snapshot.forEach((docSnap) => {
+          fetched.push({ ...docSnap.data() } as ChecklistEntry);
+        });
+
+        if (fetched.length > 0) {
+          setChecklists(fetched);
+          localStorage.setItem('domo_checklists', JSON.stringify(fetched));
+        } else {
+          // If Firestore is empty, upload local storage checklists
+          const localChecklistsStr = localStorage.getItem('domo_checklists');
+          const localChecklists: ChecklistEntry[] = localChecklistsStr ? JSON.parse(localChecklistsStr) : [];
+          if (localChecklists.length > 0) {
+            console.log(`[Sync] Enviando ${localChecklists.length} checklists locais para o Firestore...`);
+            for (const entry of localChecklists) {
+              await setDoc(doc(db, 'checklists', `${entry.petId}_${entry.date}`), {
+                ...entry,
+                tenant_id: tenantId
+              });
+            }
+          }
+        }
+      });
+    } catch (err) {
+      console.error("Erro sync checklists:", err);
+    }
+
+    // 2. Groups sync
+    try {
+      const groupsRef = collection(db, 'groups');
+      const qGroups = query(groupsRef, where('tenant_id', '==', tenantId));
+      unsubGroups = onSnapshot(qGroups, async (snapshot) => {
+        if (!active) return;
+        const fetched: PetGroup[] = [];
+        snapshot.forEach((docSnap) => {
+          fetched.push({ ...docSnap.data(), id: docSnap.id } as PetGroup);
+        });
+
+        if (fetched.length > 0) {
+          setGroups(fetched);
+          localStorage.setItem('domo_groups', JSON.stringify(fetched));
+        } else {
+          // If empty, upload local storage groups
+          const localGroupsStr = localStorage.getItem('domo_groups');
+          const localGroups: PetGroup[] = localGroupsStr ? JSON.parse(localGroupsStr) : [];
+          if (localGroups.length > 0) {
+            console.log(`[Sync] Enviando ${localGroups.length} grupos locais para o Firestore...`);
+            for (const group of localGroups) {
+              await setDoc(doc(db, 'groups', group.id), {
+                ...group,
+                tenant_id: tenantId
+              });
+            }
+          }
+        }
+      });
+    } catch (err) {
+      console.error("Erro sync groups:", err);
+    }
+
+    // 3. Medications sync
+    try {
+      const medicationsRef = collection(db, 'medications');
+      const qMedications = query(medicationsRef, where('tenant_id', '==', tenantId));
+      unsubMedications = onSnapshot(qMedications, async (snapshot) => {
+        if (!active) return;
+        const fetched: MedicationType[] = [];
+        snapshot.forEach((docSnap) => {
+          fetched.push({ ...docSnap.data(), id: docSnap.id } as MedicationType);
+        });
+
+        if (fetched.length > 0) {
+          setMedications(fetched);
+          localStorage.setItem('domo_medications', JSON.stringify(fetched));
+        } else {
+          // If empty, upload local storage medications
+          const localMedsStr = localStorage.getItem('domo_medications');
+          const localMeds: MedicationType[] = localMedsStr ? JSON.parse(localMedsStr) : [];
+          if (localMeds.length > 0) {
+            console.log(`[Sync] Enviando ${localMeds.length} medicações locais para o Firestore...`);
+            for (const med of localMeds) {
+              await setDoc(doc(db, 'medications', med.id), {
+                ...med,
+                tenant_id: tenantId
+              });
+            }
+          }
+        }
+      });
+    } catch (err) {
+      console.error("Erro sync medications:", err);
+    }
+
+    // 4. Medication Logs sync
+    try {
+      const logsRef = collection(db, 'medication_logs');
+      const qLogs = query(logsRef, where('tenant_id', '==', tenantId));
+      unsubMedicationLogs = onSnapshot(qLogs, async (snapshot) => {
+        if (!active) return;
+        const fetched: MedicationLog[] = [];
+        snapshot.forEach((docSnap) => {
+          fetched.push({ ...docSnap.data() } as MedicationLog);
+        });
+
+        if (fetched.length > 0) {
+          setMedicationLogs(fetched);
+          localStorage.setItem('domo_medication_logs', JSON.stringify(fetched));
+        } else {
+          // If empty, upload local storage logs
+          const localLogsStr = localStorage.getItem('domo_medication_logs');
+          const localLogs: MedicationLog[] = localLogsStr ? JSON.parse(localLogsStr) : [];
+          if (localLogs.length > 0) {
+            console.log(`[Sync] Enviando ${localLogs.length} logs de medicação locais para o Firestore...`);
+            for (const log of localLogs) {
+              const docId = `${log.medicationId}_${log.date}_${log.slot || 'default'}`;
+              await setDoc(doc(db, 'medication_logs', docId), {
+                ...log,
+                tenant_id: tenantId
+              });
+            }
+          }
+        }
+      });
+    } catch (err) {
+      console.error("Erro sync medication logs:", err);
+    }
+
+    // 5. Hotel stays sync
+    try {
+      const staysRef = collection(db, 'hotelStays');
+      const qStays = query(staysRef, where('tenant_id', '==', tenantId));
+      unsubStays = onSnapshot(qStays, async (snapshot) => {
+        if (!active) return;
+        const fetched: HotelStay[] = [];
+        snapshot.forEach((docSnap) => {
+          fetched.push({ ...docSnap.data(), id: docSnap.id } as HotelStay);
+        });
+
+        if (fetched.length > 0) {
+          setHotelStays(fetched);
+          localStorage.setItem('domo_hotel_stays', JSON.stringify(fetched));
+        } else {
+          const localHotelStr = localStorage.getItem('domo_hotel_stays');
+          const localStays: HotelStay[] = localHotelStr ? JSON.parse(localHotelStr) : [];
+          if (localStays.length > 0) {
+            console.log(`[Sync] Enviando ${localStays.length} estadias de hotel locais para o Firestore...`);
+            for (const stay of localStays) {
+              await setDoc(doc(db, 'hotelStays', stay.id), {
+                ...stay,
+                tenant_id: tenantId
+              });
+            }
+          }
+        }
+      });
+    } catch (err) {
+      console.error("Erro sync hotelStays:", err);
+    }
+
+    return () => {
+      active = false;
+      if (unsubChecklists) unsubChecklists();
+      if (unsubGroups) unsubGroups();
+      if (unsubMedications) unsubMedications();
+      if (unsubMedicationLogs) unsubMedicationLogs();
+      if (unsubStays) unsubStays();
+    };
+  }, [user, authLoading]);
 
   useEffect(() => {
     const init = async () => {
@@ -132,7 +324,7 @@ const App: React.FC = () => {
     init();
   }, []);
 
-  const saveChecklist = (entry: ChecklistEntry) => {
+  const saveChecklist = async (entry: ChecklistEntry) => {
     const entryWithTimestamp = { ...entry, updatedAt: new Date().toISOString() };
     setChecklists(prev => {
       const filtered = prev.filter(c => !(c.petId === entry.petId && c.date === entry.date));
@@ -145,6 +337,17 @@ const App: React.FC = () => {
       }
       return updated;
     });
+
+    if (isFirebaseConfigured && db && user) {
+      try {
+        await setDoc(doc(db, 'checklists', `${entry.petId}_${entry.date}`), {
+          ...entryWithTimestamp,
+          tenant_id: user.uid
+        });
+      } catch (e) {
+        console.error("Erro ao salvar checklist no Firestore:", e);
+      }
+    }
   };
 
   const updatePetMaster = async (updatedPet: Pet) => {
@@ -184,25 +387,64 @@ const App: React.FC = () => {
       });
 
       localStorage.setItem('domo_groups', JSON.stringify(updatedGroups));
+
+      // Also sync to Firestore
+      if (isFirebaseConfigured && db && user) {
+        updatedGroups.forEach(async (group) => {
+          try {
+            await setDoc(doc(db, 'groups', group.id), {
+              ...group,
+              tenant_id: user.uid
+            }, { merge: true });
+          } catch (e) {
+            console.error("Erro ao sincronizar grupo no updatePetMaster:", e);
+          }
+        });
+      }
+
       return updatedGroups;
     });
   };
 
-  const saveGroups = (newGroups: PetGroup[]) => {
+  const saveGroups = async (newGroups: PetGroup[]) => {
     setGroups(newGroups);
     localStorage.setItem('domo_groups', JSON.stringify(newGroups));
+
+    if (isFirebaseConfigured && db && user) {
+      try {
+        for (const group of newGroups) {
+          await setDoc(doc(db, 'groups', group.id), {
+            ...group,
+            tenant_id: user.uid
+          });
+        }
+      } catch (e) {
+        console.error("Erro ao salvar grupos no Firestore:", e);
+      }
+    }
   };
 
-  const saveMedication = (med: MedicationType) => {
+  const saveMedication = async (med: MedicationType) => {
     setMedications(prev => {
       const filtered = prev.filter(m => m.id !== med.id);
       const updated = [...filtered, med];
       localStorage.setItem('domo_medications', JSON.stringify(updated));
       return updated;
     });
+
+    if (isFirebaseConfigured && db && user) {
+      try {
+        await setDoc(doc(db, 'medications', med.id), {
+          ...med,
+          tenant_id: user.uid
+        });
+      } catch (e) {
+        console.error("Erro ao salvar medicação no Firestore:", e);
+      }
+    }
   };
 
-  const deleteMedication = (id: string) => {
+  const deleteMedication = async (id: string) => {
     setMedications(prev => {
       const updated = prev.filter(m => m.id !== id);
       localStorage.setItem('domo_medications', JSON.stringify(updated));
@@ -214,9 +456,17 @@ const App: React.FC = () => {
       localStorage.setItem('domo_medication_logs', JSON.stringify(updated));
       return updated;
     });
+
+    if (isFirebaseConfigured && db && user) {
+      try {
+        await deleteDoc(doc(db, 'medications', id));
+      } catch (e) {
+        console.error("Erro ao deletar medicação no Firestore:", e);
+      }
+    }
   };
 
-  const saveMedicationLog = (log: MedicationLog) => {
+  const saveMedicationLog = async (log: MedicationLog) => {
     setMedicationLogs(prev => {
       const filtered = prev.filter(l => 
         !(l.medicationId === log.medicationId && l.date === log.date && (l.slot === log.slot || (!l.slot && !log.slot)))
@@ -225,15 +475,38 @@ const App: React.FC = () => {
       localStorage.setItem('domo_medication_logs', JSON.stringify(updated));
       return updated;
     });
+
+    if (isFirebaseConfigured && db && user) {
+      try {
+        const docId = `${log.medicationId}_${log.date}_${log.slot || 'default'}`;
+        await setDoc(doc(db, 'medication_logs', docId), {
+          ...log,
+          tenant_id: user.uid
+        });
+      } catch (e) {
+        console.error("Erro ao salvar log de medicação no Firestore:", e);
+      }
+    }
   };
 
-  const saveHotelStay = (stay: HotelStay) => {
+  const saveHotelStay = async (stay: HotelStay) => {
     setHotelStays(prev => {
       const filtered = prev.filter(s => s.id !== stay.id);
       const updated = [...filtered, stay];
       localStorage.setItem('domo_hotel_stays', JSON.stringify(updated));
       return updated;
     });
+
+    if (isFirebaseConfigured && db && user) {
+      try {
+        await setDoc(doc(db, 'hotelStays', stay.id), {
+          ...stay,
+          tenant_id: user.uid
+        });
+      } catch (e) {
+        console.error("Erro ao salvar estadia no Firestore:", e);
+      }
+    }
   };
 
   const saveZApiConfig = (instanceId: string, token: string, clientToken: string) => {
@@ -253,12 +526,20 @@ const App: React.FC = () => {
     }
   };
 
-  const deleteHotelStay = (id: string) => {
+  const deleteHotelStay = async (id: string) => {
     setHotelStays(prev => {
       const updated = prev.filter(s => s.id !== id);
       localStorage.setItem('domo_hotel_stays', JSON.stringify(updated));
       return updated;
     });
+
+    if (isFirebaseConfigured && db && user) {
+      try {
+        await deleteDoc(doc(db, 'hotelStays', id));
+      } catch (e) {
+        console.error("Erro ao deletar estadia no Firestore:", e);
+      }
+    }
   };
 
   const deletePet = async (petId: string) => {

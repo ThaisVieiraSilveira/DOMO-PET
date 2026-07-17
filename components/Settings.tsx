@@ -700,6 +700,22 @@ const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
 
+                <div className="space-y-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Sugestões de Emojis</span>
+                  <div className="flex flex-wrap gap-2 p-4 bg-[#F9FBFA] border border-[#E7EFEA] rounded-2xl max-h-[140px] overflow-y-auto">
+                    {['⚽', '🏊‍♂️', '🌳', '🐕‍🦺', '🧸', '🤝', '💤', '⏸️', '🦮', '🎾', '🦴', '❤️', '🪮', '🧼', '🎓', '✨', '🥩', '🥣', '💊', '🏨', '🏃‍♂️', '✂️', '🥇', '🎉', '📝', '📸', '🌡️', '💩', '💧', '🧴', '🐾', '🧺', '🍖', '🐶'].map(emoji => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setNewActivityEmoji(emoji)}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl hover:bg-emerald-50 active:scale-90 transition-all ${newActivityEmoji === emoji ? 'bg-emerald-100 border-2 border-emerald-400' : 'bg-white border border-slate-200'}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   className="w-full py-4 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-md hover:scale-[1.01] active:scale-95 border-b-2"

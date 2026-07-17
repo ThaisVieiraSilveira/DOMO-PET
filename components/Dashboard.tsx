@@ -876,14 +876,25 @@ const Dashboard: React.FC<DashboardProps> = ({
           await uploadBytes(storageRef, batchActivityFile);
           uploadedImageUrl = await getDownloadURL(storageRef);
         } catch (err) {
-          console.error("Erro no upload da foto da atividade em lote:", err);
+          console.warn("Storage upload failed, falling back to Base64:", err);
+          try {
+            uploadedImageUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(batchActivityFile!);
+            });
+          } catch (b64Err) {
+            console.error("Erro ao converter imagem para base64:", b64Err);
+          }
         }
       } else {
         // Mock base64 for offline/preview
         try {
-          uploadedImageUrl = await new Promise<string>((resolve) => {
+          uploadedImageUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
             reader.readAsDataURL(batchActivityFile!);
           });
         } catch (err) {
@@ -1047,9 +1058,20 @@ const Dashboard: React.FC<DashboardProps> = ({
         } else {
           storagePath = `tenants/${tenantId}/moments/${momentId}`;
         }
-        const storageRef = ref(storage, storagePath);
-        await uploadBytes(storageRef, momentFile);
-        imagemUrl = await getDownloadURL(storageRef);
+        try {
+          const storageRef = ref(storage, storagePath);
+          await uploadBytes(storageRef, momentFile);
+          imagemUrl = await getDownloadURL(storageRef);
+        } catch (storageErr) {
+          console.warn("Storage upload failed, falling back to Base64 dataURL:", storageErr);
+          // Offline / dev fallback: convert file to Base64 dataURL
+          imagemUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(momentFile!);
+          });
+        }
       } else {
         // Offline / dev fallback: convert file to Base64 dataURL
         imagemUrl = await new Promise<string>((resolve, reject) => {
@@ -1532,24 +1554,24 @@ const Dashboard: React.FC<DashboardProps> = ({
 
 
       {/* HEADER SECTION WITH INTEGRATED RECOVERY AND CONTROLS */}
-      <div className="bg-white rounded-[40px] p-8 sm:p-10 border border-emerald-100/40 shadow-xl relative overflow-visible">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-100/40 shadow-xl relative overflow-visible">
         <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full -mr-28 -mt-28 blur-3xl"></div>
         
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
           <div>
             <div className="flex items-center gap-4.5">
               {domoLogo ? (
-                <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-3xl bg-slate-50 border-2 border-slate-100 p-2 flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 border-2 border-slate-100 p-2 flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
                   <img src={domoLogo} alt="Logo" className="w-full h-full object-contain rounded-xl" referrerPolicy="no-referrer" />
                 </div>
               ) : (
-                <span className="text-6xl animate-bounce-paw">🐾</span>
+                <span className="text-5xl animate-bounce-paw">🐾</span>
               )}
               <div>
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter leading-tight" style={{ color: domoCor }}>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter leading-tight" style={{ color: domoCor }}>
                   Matilha {domoNome}
                 </h1>
-                <p className="text-slate-500 font-black text-sm sm:text-base uppercase tracking-wider mt-2">Painel Central de Gerenciamento e Escala canina</p>
+                <p className="text-slate-500 font-black text-xs sm:text-sm uppercase tracking-wider mt-2">Painel Central de Gerenciamento e Escala canina</p>
               </div>
             </div>
 
@@ -1811,7 +1833,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
           {/* Card 1: Batch registry */}
           <button 
             type="button"
@@ -1824,15 +1846,15 @@ const Dashboard: React.FC<DashboardProps> = ({
               setBatchObservation('');
               setShowBatchModal(true);
             }}
-            className="p-6 rounded-3xl bg-gradient-to-b from-white to-slate-50 border-2 border-slate-100 text-left shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col justify-between h-[185px]"
+            className="p-4 rounded-2xl bg-gradient-to-b from-white to-slate-50 border-2 border-slate-100 text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group flex flex-col justify-between h-[155px]"
           >
-            <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-              <CheckCircle2 className="w-6 h-6" />
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
+              <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-emerald-600">Alimentação</p>
-              <h4 className="font-black text-base sm:text-lg text-slate-800 leading-tight mt-1">Registrar refeição</h4>
-              <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1 leading-tight">Atualize alimentação de vários pets</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600">Alimentação</p>
+              <h4 className="font-black text-sm sm:text-base text-slate-800 leading-tight mt-1">Registrar refeição</h4>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5 leading-tight">Vários cães</p>
             </div>
           </button>
 
@@ -1857,15 +1879,15 @@ const Dashboard: React.FC<DashboardProps> = ({
               setBatchActivityFilePreview(null);
               setShowBatchActivityModal(true);
             }}
-            className="p-6 rounded-3xl bg-gradient-to-b from-white to-slate-50 border-2 border-slate-100 text-left shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col justify-between h-[185px]"
+            className="p-4 rounded-2xl bg-gradient-to-b from-white to-slate-50 border-2 border-slate-100 text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group flex flex-col justify-between h-[155px]"
           >
-            <div className="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-              <Sparkles className="w-6 h-6" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
+              <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-indigo-600">Recreação</p>
-              <h4 className="font-black text-base sm:text-lg text-slate-800 leading-tight mt-1">Atividade em lote</h4>
-              <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1 leading-tight">Atividades em lote para os pets</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600">Recreação</p>
+              <h4 className="font-black text-sm sm:text-base text-slate-800 leading-tight mt-1">Atividade em lote</h4>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5 leading-tight">Atividades em grupo</p>
             </div>
           </button>
 
@@ -1887,15 +1909,15 @@ const Dashboard: React.FC<DashboardProps> = ({
               setMomentSearchTerm('');
               setShowMomentModal(true);
             }}
-            className="p-6 rounded-3xl bg-gradient-to-b from-white to-slate-50 border-2 border-slate-100 text-left shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col justify-between h-[185px]"
+            className="p-4 rounded-2xl bg-gradient-to-b from-white to-slate-50 border-2 border-slate-100 text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group flex flex-col justify-between h-[155px]"
           >
-            <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-              <Camera className="w-6 h-6" />
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
+              <Camera className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-purple-600">Momentos</p>
-              <h4 className="font-black text-base sm:text-lg text-slate-800 leading-tight mt-1">Enviar momento</h4>
-              <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1 leading-tight">Envie fotos ou vídeos dos pets</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-purple-600">Momentos</p>
+              <h4 className="font-black text-sm sm:text-base text-slate-800 leading-tight mt-1">Enviar momento</h4>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5 leading-tight">Envie fotos/vídeos</p>
             </div>
           </button>
 
@@ -1903,24 +1925,24 @@ const Dashboard: React.FC<DashboardProps> = ({
           <button 
             type="button"
             onClick={() => setShowHotelOnly(prev => !prev)}
-            className={`p-6 rounded-3xl text-left shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col justify-between h-[185px] border-2 ${
+            className={`p-4 rounded-2xl text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group flex flex-col justify-between h-[155px] border-2 ${
               showHotelOnly 
                 ? 'bg-gradient-to-b from-emerald-500 to-[#10b981]/90 border-emerald-600 text-white' 
                 : 'bg-gradient-to-b from-white to-slate-50 border-slate-100'
             }`}
           >
-            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner ${showHotelOnly ? 'bg-white/10 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
-              <Building2 className="w-6 h-6" />
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner ${showHotelOnly ? 'bg-white/10 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
+              <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <p className={`text-[11px] sm:text-xs font-black uppercase tracking-wider ${showHotelOnly ? 'text-emerald-100 animate-pulse' : 'text-indigo-600'}`}>
+              <p className={`text-[10px] font-black uppercase tracking-wider ${showHotelOnly ? 'text-emerald-100 animate-pulse' : 'text-indigo-600'}`}>
                 {showHotelOnly ? 'FILTRO ATIVO ✅' : 'Hotel'}
               </p>
-              <h4 className={`font-black text-base sm:text-lg leading-tight mt-1 ${showHotelOnly ? 'text-white' : 'text-slate-800'}`}>
+              <h4 className={`font-black text-sm sm:text-base leading-tight mt-1 ${showHotelOnly ? 'text-white' : 'text-slate-800'}`}>
                 Ver hospedados
               </h4>
-              <p className={`text-xs sm:text-sm font-bold mt-1 leading-tight ${showHotelOnly ? 'text-emerald-100' : 'text-slate-500'}`}>
-                Acompanhe pets no hotel
+              <p className={`text-[11px] font-bold mt-0.5 leading-tight ${showHotelOnly ? 'text-emerald-100' : 'text-slate-400'}`}>
+                Acompanhe o hotel
               </p>
             </div>
           </button>
@@ -1932,15 +1954,15 @@ const Dashboard: React.FC<DashboardProps> = ({
               setMedsFilterPetId(null);
               setShowMedicationsModal(true);
             }}
-            className="p-6 rounded-3xl bg-gradient-to-b from-white to-slate-50 border-2 border-slate-100 text-left shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col justify-between h-[185px]"
+            className="p-4 rounded-2xl bg-gradient-to-b from-white to-slate-50 border-2 border-slate-100 text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group flex flex-col justify-between h-[155px]"
           >
-            <div className="w-11 h-11 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-              <Clock className="w-6 h-6" />
+            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
+              <Clock className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-rose-500">Medicação</p>
-              <h4 className="font-black text-base sm:text-lg text-slate-800 leading-tight mt-1">Medicamentos</h4>
-              <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1 leading-tight">Veja remédios programados</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-rose-500">Medicação</p>
+              <h4 className="font-black text-sm sm:text-base text-slate-800 leading-tight mt-1">Medicamentos</h4>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5 leading-tight">Remédios do dia</p>
             </div>
           </button>
 
@@ -1948,20 +1970,20 @@ const Dashboard: React.FC<DashboardProps> = ({
           <button 
             type="button"
             onClick={() => setShowApprovalsModal(true)}
-            className="p-6 rounded-3xl bg-gradient-to-b from-white to-slate-50 border-2 border-slate-100 text-left shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col justify-between h-[185px] relative"
+            className="p-4 rounded-2xl bg-gradient-to-b from-white to-slate-50 border-2 border-slate-100 text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group flex flex-col justify-between h-[155px] relative"
           >
             {pendentes.length > 0 && (
-              <span className="absolute top-4 right-4 w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center font-black text-[11px] scrollbar-hide border-2 border-white">
+              <span className="absolute top-3 right-3 w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center font-black text-[9px] border-2 border-white animate-pulse">
                 {pendentes.length}
               </span>
             )}
-            <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-              <Users className="w-6 h-6" />
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-inner">
+              <Users className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-500">Cadastros</p>
-              <h4 className="font-black text-base sm:text-lg text-slate-800 leading-tight mt-1">Pendentes</h4>
-              <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1 leading-tight">Aprove novos pets e tutores</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-500">Cadastros</p>
+              <h4 className="font-black text-sm sm:text-base text-slate-800 leading-tight mt-1">Pendentes</h4>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5 leading-tight">Aprovar cadastros</p>
             </div>
           </button>
         </div>

@@ -602,7 +602,7 @@ const Medication: React.FC<MedicationProps> = ({
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">DOR DE HORÁRIO PRINCIPAL</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">HORÁRIO PRINCIPAL DO MEDICAMENTO</label>
                     <input 
                       type="time"
                       value={newMed.time}

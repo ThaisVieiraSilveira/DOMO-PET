@@ -80,6 +80,41 @@ service cloud.firestore {
       );
     }
 
+    // Rules for checklists
+    match /checklists/{checklistId} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
+        (resource != null && resource.data.tenant_id == request.auth.uid)
+      );
+    }
+
+    // Rules for medications
+    match /medications/{medId} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
+        (resource != null && resource.data.tenant_id == request.auth.uid)
+      );
+    }
+
+    // Rules for medication_logs
+    match /medication_logs/{logId} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
+        (resource != null && resource.data.tenant_id == request.auth.uid)
+      );
+    }
+
+    // Rules for groups
+    match /groups/{groupId} {
+      allow read, write: if request.auth != null && (
+        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
+        (resource != null && resource.data.tenant_id == request.auth.uid)
+      );
+    }
+
     // Rules for pending registrations submitted by public users
     match /cadastros_pendentes/{cadastroId} {
       // Allow public creation (submitting form)

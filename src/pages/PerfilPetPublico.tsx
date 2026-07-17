@@ -199,18 +199,58 @@ const PerfilPetPublico: React.FC = () => {
           }
         }
 
-        const medsStr = localStorage.getItem('domo_medications') || '[]';
-        const meds: Medication[] = JSON.parse(medsStr);
-        const petMeds = meds.filter(m => m.petId === petData!.id && m.active);
-        setActiveMedications(petMeds);
+        let petMeds: Medication[] = [];
+        let todayCheck: ChecklistEntry | null = null;
 
-        // 5. Check if today has a checklist entry to show "Last update today at"
-        const todayStr = new Date().toISOString().split('T')[0];
-        const checksStr = localStorage.getItem('domo_checklists') || '[]';
-        const checklists: ChecklistEntry[] = JSON.parse(checksStr);
-        const todayCheck = checklists.find(c => c.petId === petData!.id && c.date === todayStr);
-        if (todayCheck) {
-          setTodayChecklist(todayCheck);
+        if (isFirebaseConfigured && db) {
+          try {
+            const medsRef = collection(db, 'medications');
+            const qMeds = query(medsRef, where('petId', '==', petData.id), where('active', '==', true));
+            const medsSnap = await getDocs(qMeds);
+            medsSnap.forEach(docSnap => {
+              petMeds.push({ ...docSnap.data(), id: docSnap.id } as Medication);
+            });
+            if (petMeds.length > 0) {
+              setActiveMedications(petMeds);
+            }
+          } catch (medsErr) {
+            console.warn("Firestore medications fetch failed:", medsErr);
+          }
+
+          try {
+            const checklistsRef = collection(db, 'checklists');
+            const qChecks = query(checklistsRef, where('petId', '==', petData.id));
+            const checksSnap = await getDocs(qChecks);
+            const fetchedChecklists: ChecklistEntry[] = [];
+            checksSnap.forEach(docSnap => {
+              fetchedChecklists.push(docSnap.data() as ChecklistEntry);
+            });
+            const todayStr = new Date().toISOString().split('T')[0];
+            const check = fetchedChecklists.find(c => c.date === todayStr);
+            if (check) {
+              todayCheck = check;
+              setTodayChecklist(check);
+            }
+          } catch (checksErr) {
+            console.warn("Firestore checklists fetch failed:", checksErr);
+          }
+        }
+
+        if (petMeds.length === 0) {
+          const medsStr = localStorage.getItem('domo_medications') || '[]';
+          const meds: Medication[] = JSON.parse(medsStr);
+          petMeds = meds.filter(m => m.petId === petData!.id && m.active);
+          setActiveMedications(petMeds);
+        }
+
+        if (!todayCheck) {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const checksStr = localStorage.getItem('domo_checklists') || '[]';
+          const checklists: ChecklistEntry[] = JSON.parse(checksStr);
+          todayCheck = checklists.find(c => c.petId === petData!.id && c.date === todayStr) || null;
+          if (todayCheck) {
+            setTodayChecklist(todayCheck);
+          }
         }
 
         // 6. Fetch Timeline, Moments, and Bulletins
@@ -221,78 +261,146 @@ const PerfilPetPublico: React.FC = () => {
         if (isFirebaseConfigured && db) {
           try {
             // Load Records from hotelRecords
-            const recordsRef = collection(db, 'hotelRecords');
-            const qRecords = query(recordsRef, where('petId', '==', petData.id), where('visibleToTutor', '==', true));
-            const recordsSnap = await getDocs(qRecords);
-            
-            recordsSnap.forEach(docSnap => {
-              const data = docSnap.data();
-              dbTimeline.push({
-                id: docSnap.id,
-                horario: data.time || '00:00',
-                tipo: data.type === 'feeding' ? 'alimentacao' :
-                      data.type === 'medication' ? 'medicacao' :
-                      data.type === 'photo' ? 'fotos' : 'atividades',
-                texto: data.notes || '',
-                imagemUrl: data.photoUrl || undefined,
-                responsavel: data.responsible,
-                visivelTutor: true
-              });
-
-              if (data.type === 'photo' && data.photoUrl) {
-                dbMoments.push({
+            try {
+              const recordsRef = collection(db, 'hotelRecords');
+              const qRecords = query(recordsRef, where('petId', '==', petData.id), where('visibleToTutor', '==', true));
+              const recordsSnap = await getDocs(qRecords);
+              
+              recordsSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                dbTimeline.push({
                   id: docSnap.id,
-                  url: data.photoUrl,
-                  categoria: 'hospedagem',
-                  legenda: data.notes,
-                  visivelTutor: true,
-                  criadoEm: data.createdAt || new Date().toISOString()
+                  horario: data.time || data.horario || '00:00',
+                  tipo: data.type === 'feeding' ? 'alimentacao' :
+                        data.type === 'medication' ? 'medicacao' :
+                        data.type === 'photo' ? 'fotos' : 'atividades',
+                  texto: data.notes || data.texto || '',
+                  imagemUrl: data.photoUrl || data.imagemUrl || undefined,
+                  responsavel: data.responsible || data.responsavel,
+                  visivelTutor: true
                 });
-              }
-            });
+
+                if ((data.type === 'photo' || data.tipo === 'fotos') && (data.photoUrl || data.imagemUrl)) {
+                  dbMoments.push({
+                    id: docSnap.id,
+                    url: data.photoUrl || data.imagemUrl || '',
+                    categoria: 'hospedagem',
+                    legenda: data.notes || data.texto || '',
+                    visivelTutor: true,
+                    criadoEm: data.createdAt || data.criadoEm || new Date().toISOString()
+                  });
+                }
+              });
+            } catch (err) {
+              console.warn("Could not fetch hotelRecords:", err);
+            }
 
             // Load Reports from hotelReports
-            const reportsRef = collection(db, 'hotelReports');
-            const qReports = query(reportsRef, where('petId', '==', petData.id));
-            const reportsSnap = await getDocs(qReports);
-            reportsSnap.forEach(docSnap => {
-              const data = docSnap.data();
-              dbBulletins.push({
-                id: docSnap.id,
-                tipo: 'hotel',
-                titulo: `Boletim de Hospedagem - ${petData!.pet_nome}`,
-                periodoInicio: data.createdAt || new Date().toISOString(),
-                periodoFim: data.createdAt || new Date().toISOString(),
-                resumo: data.reportText || '',
-                status: 'arquivado',
-                criadoEm: data.createdAt || new Date().toISOString()
+            try {
+              const reportsRef = collection(db, 'hotelReports');
+              const qReports = query(reportsRef, where('petId', '==', petData.id));
+              const reportsSnap = await getDocs(qReports);
+              reportsSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                dbBulletins.push({
+                  id: docSnap.id,
+                  tipo: 'hotel',
+                  titulo: `Boletim de Hospedagem - ${petData!.pet_nome}`,
+                  periodoInicio: data.createdAt || new Date().toISOString(),
+                  periodoFim: data.createdAt || new Date().toISOString(),
+                  resumo: data.reportText || data.notes || '',
+                  status: 'arquivado',
+                  criadoEm: data.createdAt || new Date().toISOString()
+                });
               });
-            });
+            } catch (err) {
+              console.warn("Could not fetch hotelReports:", err);
+            }
 
-            // Fallback: Safe fetch legacy subcollections if empty
-            if (dbTimeline.length === 0) {
+            // Load direct timeline subcollection
+            try {
               const timelineSnap = await getDocs(collection(db, 'pets', petData.id, 'timeline'));
               timelineSnap.forEach(docSnap => {
-                dbTimeline.push({ id: docSnap.id, ...docSnap.data() } as any);
+                const data = docSnap.data();
+                dbTimeline.push({
+                  id: docSnap.id,
+                  horario: data.horario || data.time || '00:00',
+                  tipo: data.tipo || 'atividades',
+                  texto: data.texto || data.notes || '',
+                  imagemUrl: data.imagemUrl || data.photoUrl || undefined,
+                  responsavel: data.responsavel || data.responsible,
+                  visivelTutor: data.visivelTutor !== false
+                });
               });
+            } catch (err) {
+              console.warn("Could not fetch pets/timeline:", err);
             }
 
-            if (dbMoments.length === 0) {
+            // Load direct moments subcollection
+            try {
               const momentsSnap = await getDocs(collection(db, 'pets', petData.id, 'moments'));
               momentsSnap.forEach(docSnap => {
-                dbMoments.push({ id: docSnap.id, ...docSnap.data() } as any);
+                const data = docSnap.data();
+                dbMoments.push({
+                  id: docSnap.id,
+                  url: data.url || data.imagemUrl || data.photoUrl || '',
+                  categoria: data.categoria || 'hoje',
+                  legenda: data.legenda || data.texto || data.notes || '',
+                  visivelTutor: data.visivelTutor !== false,
+                  criadoEm: data.criadoEm || data.createdAt || new Date().toISOString()
+                });
               });
+            } catch (err) {
+              console.warn("Could not fetch pets/moments:", err);
             }
 
-            if (dbBulletins.length === 0) {
+            // Load direct bulletins subcollection
+            try {
               const bulletinsSnap = await getDocs(collection(db, 'pets', petData.id, 'boletins'));
               bulletinsSnap.forEach(docSnap => {
-                dbBulletins.push({ id: docSnap.id, ...docSnap.data() } as any);
+                const data = docSnap.data();
+                dbBulletins.push({
+                  id: docSnap.id,
+                  tipo: data.tipo || 'creche_mensal',
+                  titulo: data.titulo || '',
+                  periodoInicio: data.periodoInicio || '',
+                  periodoFim: data.periodoFim || '',
+                  resumo: data.resumo || '',
+                  status: data.status || 'Finalizado',
+                  criadoEm: data.criadoEm || data.createdAt || new Date().toISOString()
+                });
               });
+            } catch (err) {
+              console.warn("Could not fetch pets/boletins:", err);
             }
 
+            // De-duplicate lists by ID and filter visivelTutor === true
+            const uniqueTimelineMap = new Map<string, TimelineEvent>();
+            dbTimeline.forEach(event => {
+              if (event.visivelTutor) {
+                uniqueTimelineMap.set(event.id, event);
+              }
+            });
+            dbTimeline = Array.from(uniqueTimelineMap.values());
+            // Sort by horario descending
+            dbTimeline.sort((a, b) => b.horario.localeCompare(a.horario));
+
+            const uniqueMomentsMap = new Map<string, MomentItem>();
+            dbMoments.forEach(m => {
+              if (m.visivelTutor) {
+                uniqueMomentsMap.set(m.id, m);
+              }
+            });
+            dbMoments = Array.from(uniqueMomentsMap.values());
+
+            const uniqueBulletinsMap = new Map<string, BulletinItem>();
+            dbBulletins.forEach(b => {
+              uniqueBulletinsMap.set(b.id, b);
+            });
+            dbBulletins = Array.from(uniqueBulletinsMap.values());
+
           } catch (e) {
-            console.log("Subcoleções futuras de timeline/momentos/boletins ainda não criadas no Firestore:", e);
+            console.log("Erro geral ao processar coleções do Firestore para o tutor:", e);
           }
         }
 
