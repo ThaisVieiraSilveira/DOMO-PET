@@ -94,6 +94,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'alergia' | 'doenca'>('all');
+  const [petToDelete, setPetToDelete] = useState<Pet | null>(null);
 
   // Multi-view white label and pending integration
   const [showGenerator, setShowGenerator] = useState(false);
@@ -1518,7 +1519,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
                         <span>🔗</span> {pet.tutorAccessToken && pet.tutorAccessEnabled ? 'Copiar Link' : 'Gerar Link'}
                       </button>
                       <button 
-                        onClick={() => onDeletePet(pet.id)}
+                        onClick={() => setPetToDelete(pet)}
                         className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-rose-500 hover:text-white rounded-xl border border-slate-100 transition-all shadow-sm group/del"
                         title="Excluir Pet"
                       >
@@ -2090,6 +2091,44 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
                   Fechar Relatório
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMAÇÃO DE EXCLUSÃO DE PET */}
+      {petToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 text-left">
+          <div className="bg-white rounded-[35px] border border-slate-100 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="text-left">
+              <h4 className="text-xl font-black text-slate-800 leading-none">
+                Excluir cadastro do pet?
+              </h4>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Essa ação é permanente e não poderá ser desfeita. Todos os dados, histórico de saúde, relatórios e registros de <strong>{petToDelete.pet_nome}</strong> serão removidos permanentemente do sistema.
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setPetToDelete(null)}
+                className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-2xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (onDeletePet && petToDelete.id) {
+                    await onDeletePet(petToDelete.id);
+                    setPetToDelete(null);
+                  }
+                }}
+                className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md"
+              >
+                Excluir Pet
+              </button>
             </div>
           </div>
         </div>

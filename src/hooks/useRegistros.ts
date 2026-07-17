@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth, isFirebaseConfigured } from '../firebase';
+import { ensureAuthenticated, logSave, logLoad } from '../../utils/firestore';
 
 export interface Registro {
   id: string;
@@ -76,6 +77,7 @@ export function useRegistros() {
             // Sort by creation date descending
             fetchedRegistros.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
 
+            logLoad('registros', user.uid, fetchedRegistros.length);
             setRegistros(fetchedRegistros);
             setLoading(false);
 
@@ -107,13 +109,13 @@ export function useRegistros() {
   }, []);
 
   const addRegistro = async (registroData: Omit<Registro, 'id' | 'tenant_id' | 'criado_em'>) => {
-    const user = auth.currentUser;
+    const tenantId = ensureAuthenticated();
     const newId = doc(collection(db, 'registros')).id || Math.random().toString(36).substr(2, 9);
     
     const newRegistro: Registro = {
       ...registroData,
       id: newId,
-      tenant_id: user ? user.uid : 'local-user',
+      tenant_id: tenantId,
       criado_em: new Date().toISOString(),
     };
 
@@ -127,9 +129,10 @@ export function useRegistros() {
     }
 
     // 2. Save in cloud Firestore
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
       try {
         const docRef = doc(db, 'registros', newId);
+        logSave('registros', newId, tenantId, newRegistro);
         await setDoc(docRef, newRegistro);
       } catch (error) {
         console.error("Erro ao salvar registro no Firestore:", error);

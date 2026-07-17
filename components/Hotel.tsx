@@ -91,6 +91,7 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
   const [photoForm, setPhotoForm] = useState({ caption: '', visibleToTutor: true, uploading: false });
   const [checkoutItemsCheck, setCheckoutItemsCheck] = useState<Record<string, boolean>>({});
   const [checkoutReportText, setCheckoutReportText] = useState('');
+  const [isConfirmingFinalize, setIsConfirmingFinalize] = useState(false);
 
   // Media upload state
   const [uploadingItemPhoto, setUploadingItemPhoto] = useState(false);
@@ -128,6 +129,23 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
       return { ...stay, pet, report };
     });
   }, [stays, petsMap, reports]);
+
+  const getRegisterMealLabel = (timeStr: string): string => {
+    const normalized = timeStr.toUpperCase();
+    if (normalized.includes('CAFÉ') || normalized.includes('CAFE')) return 'Registrar café';
+    if (normalized.includes('ALMOÇO') || normalized.includes('ALMOCO')) return 'Registrar almoço';
+    if (normalized.includes('JANTAR')) return 'Registrar jantar';
+    
+    // Try to parse hour
+    const match = normalized.match(/(\d{2}):(\d{2})/);
+    if (match) {
+      const hour = parseInt(match[1]);
+      if (hour < 11) return 'Registrar café';
+      if (hour >= 11 && hour < 16) return 'Registrar almoço';
+      if (hour >= 16) return 'Registrar jantar';
+    }
+    return 'Registrar refeição';
+  };
 
   // Compute Missing/Pending Meals
   const pendingMealsByStay = useMemo(() => {
@@ -269,6 +287,7 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
 
     // Close form & reset
     setIsAddingStay(false);
+    alert(`Check-in de ${selectedPetObj?.pet_nome || 'Pet'} realizado com sucesso! 🏨`);
     setSuccessToast(`Check-in de ${selectedPetObj?.pet_nome || 'Pet'} realizado com sucesso!`);
     setTimeout(() => {
       setSuccessToast(null);
@@ -502,6 +521,7 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
     setIsCheckingOut(null);
     setCheckoutItemsCheck({});
     setCheckoutReportText('');
+    alert(`Check-out de ${pName} concluído e boletim gerado com sucesso! ✅🏨`);
     setSuccessToast('Hospedagem encerrada e boletim gerado com sucesso!');
     setTimeout(() => {
       setSuccessToast(null);
@@ -734,19 +754,47 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
                                 setMealForm(prev => ({ ...prev, slot: sIdx }));
                                 setIsLoggingMeal(stay);
                               }}
-                              className={`px-3 py-1.5 rounded-xl font-bold text-[10px] transition-all flex items-center gap-1 uppercase border shrink-0 ${
+                              className={`px-3 py-1.5 rounded-xl font-bold text-[10px] transition-all flex items-center gap-1 uppercase border shrink-0 cursor-pointer ${
                                 fed 
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                                   : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200 shadow-sm'
                               }`}
                             >
-                              <span>{fed ? '✓' : '⏰'}</span> {time}
+                              <span>{fed ? '✓' : '⏰'}</span> {time} {!fed && ' PENDENTE'}
                             </button>
                           );
                         })}
                       </div>
+
+                      {/* Botões verdes de ação direta para refeições pendentes */}
+                      <div className="flex flex-col gap-1.5 mt-1.5">
+                        {stay.feedingSchedule?.map((time, sIdx) => {
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          const fed = records.some(r => 
+                            r.hotelStayId === stay.id && 
+                            r.type === 'feeding' && 
+                            r.date === todayStr &&
+                            (r.notes?.includes(`Slot #${sIdx + 1}`) || (r as any).slot === sIdx)
+                          );
+                          if (fed) return null;
+                          const actionLabel = getRegisterMealLabel(time);
+                          return (
+                            <button
+                              key={`direct-meal-${sIdx}`}
+                              onClick={() => {
+                                setMealForm(prev => ({ ...prev, slot: sIdx }));
+                                setIsLoggingMeal(stay);
+                              }}
+                              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-600/10 cursor-pointer"
+                            >
+                              <span>🥣</span> {actionLabel}
+                            </button>
+                          );
+                        })}
+                      </div>
+
                       {stay.feedingNotes && (
-                        <p className="text-[10px] text-slate-500 font-bold leading-tight">Nota: {stay.feedingNotes}</p>
+                        <p className="text-[10px] text-slate-500 font-bold leading-tight pt-1">Nota: {stay.feedingNotes}</p>
                       )}
                     </div>
 
@@ -783,27 +831,27 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setIsLoggingActivity(stay)}
-                        className="py-3 bg-white border border-slate-200 text-indigo-900 hover:bg-indigo-50 hover:border-indigo-200 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                        className="py-3 bg-white border border-slate-200 text-indigo-900 hover:bg-indigo-50 hover:border-indigo-200 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                       >
-                        🎾 Ativ.
+                        🎾 Atividade
                       </button>
                       <button
                         onClick={() => setIsLoggingMed(stay)}
-                        className="py-3 bg-white border border-slate-200 text-indigo-900 hover:bg-indigo-50 hover:border-indigo-200 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                        className="py-3 bg-white border border-slate-200 text-indigo-900 hover:bg-indigo-50 hover:border-indigo-200 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                       >
-                        💊 Med.
+                        💊 Medicação
                       </button>
                       <button
                         onClick={() => setIsLoggingPhoto(stay)}
-                        className="py-3 bg-white border border-slate-200 text-indigo-900 hover:bg-indigo-50 hover:border-indigo-200 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                        className="py-3 bg-white border border-slate-200 text-indigo-900 hover:bg-indigo-50 hover:border-indigo-200 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                       >
                         📸 Foto
                       </button>
                       <button
                         onClick={() => copyTutorLink(stay.pet!)}
-                        className="py-3 bg-white border border-slate-200 text-indigo-900 hover:bg-indigo-50 hover:border-indigo-200 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                        className="py-3 bg-white border border-slate-200 text-indigo-900 hover:bg-indigo-50 hover:border-indigo-200 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                       >
-                        👤 Tutor
+                        👤 Link tutor
                       </button>
                     </div>
 
@@ -811,13 +859,13 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setIsViewingStayRecords(stay)}
-                        className="flex-1 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black rounded-xl text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-1 border border-indigo-100"
+                        className="flex-1 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black rounded-xl text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-1 border border-indigo-100 cursor-pointer"
                       >
-                        <ListTodo size={12} /> Acompanhar
+                        <ListTodo size={12} /> Ver estadia
                       </button>
                       <button
                         onClick={() => handleStartCheckout(stay)}
-                        className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-1 shadow-md shadow-rose-600/10"
+                        className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-1 shadow-md shadow-rose-600/10 cursor-pointer"
                       >
                         <LogOut size={12} /> Finalizar
                       </button>
@@ -1817,15 +1865,58 @@ const Hotel: React.FC<HotelProps> = ({ pets: initialPets }) => {
               <div className="flex gap-4 pt-4 border-t border-slate-100">
                 <button
                   onClick={() => setIsCheckingOut(null)}
-                  className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 font-black uppercase text-xs tracking-widest rounded-2xl transition-all"
+                  className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 font-black uppercase text-xs tracking-widest rounded-2xl transition-all cursor-pointer"
                 >
                   CANCELAR
                 </button>
                 <button
-                  onClick={handleConfirmCheckout}
-                  className="flex-[2] py-4 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase text-xs tracking-widest shadow-lg shadow-rose-600/20 rounded-2xl transition-all"
+                  onClick={() => setIsConfirmingFinalize(true)}
+                  className="flex-[2] py-4 bg-rose-600 hover:bg-rose-700 text-white font-black uppercase text-xs tracking-widest shadow-lg shadow-rose-600/20 rounded-2xl transition-all cursor-pointer"
                 >
                   CONFIRMAR CHECK-OUT & ARQUIVAR 🏨
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CONFIRMAÇÃO DE FINALIZAR HOSPEDAGEM */}
+      <AnimatePresence>
+        {isConfirmingFinalize && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 text-left">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-[35px] border border-slate-100 shadow-2xl max-w-md w-full p-6 space-y-4"
+            >
+              <div className="text-left">
+                <h4 className="text-xl font-black text-slate-800 leading-none">
+                  Finalizar hospedagem?
+                </h4>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed font-bold">
+                  Essa hospedagem será movida para o histórico. Os registros, fotos e boletim continuarão salvos.
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmingFinalize(false)}
+                  className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-2xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsConfirmingFinalize(false);
+                    await handleConfirmCheckout();
+                  }}
+                  className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md"
+                >
+                  Finalizar hospedagem
                 </button>
               </div>
             </motion.div>

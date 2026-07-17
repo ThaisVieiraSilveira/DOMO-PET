@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Pet, ChecklistEntry, Medication, MedicationLog, HotelStay } from '../types';
 import { useTenant } from '../src/hooks/useTenant';
+import { db, auth, isFirebaseConfigured } from '../src/firebase';
+import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 
 interface SettingsProps {
   pets: Pet[];
@@ -44,6 +46,81 @@ const Settings: React.FC<SettingsProps> = ({
   const [activities, setActivities] = useState<{ label: string; emoji: string }[]>([]);
   const [newActivityLabel, setNewActivityLabel] = useState('');
   const [newActivityEmoji, setNewActivityEmoji] = useState('⚽');
+
+  // Firebase Diagnostic Test States
+  const [testStatus, setTestStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [testResult, setTestResult] = useState<{
+    writeTimeMs?: number;
+    readTimeMs?: number;
+    deleteTimeMs?: number;
+    totalTimeMs?: number;
+    message?: string;
+    details?: string;
+  } | null>(null);
+
+  const runFirebaseTest = async () => {
+    setTestStatus('running');
+    setTestResult(null);
+    
+    if (!isFirebaseConfigured || !db) {
+      setTestStatus('error');
+      setTestResult({
+        message: 'Firebase não está devidamente configurado nas variáveis de ambiente ou o Firestore está offline.',
+        details: 'Certifique se as chaves API, Project ID e outras variáveis foram carregadas com sucesso.'
+      });
+      return;
+    }
+
+    try {
+      const user = auth.currentUser;
+      const testId = `diag_test_${Date.now()}`;
+      const docRef = doc(db, 'firebase_tests', testId);
+      
+      // 1. Measure write time
+      const startWrite = performance.now();
+      await setDoc(docRef, {
+        status: 'online',
+        timestamp: new Date().toISOString(),
+        testBy: user?.email || 'anonymous_diagnostic',
+        device: navigator.userAgent
+      });
+      const endWrite = performance.now();
+      const writeTime = Math.round(endWrite - startWrite);
+
+      // 2. Measure read time
+      const startRead = performance.now();
+      const snap = await getDoc(docRef);
+      const endRead = performance.now();
+      const readTime = Math.round(endRead - startRead);
+
+      if (!snap.exists()) {
+        throw new Error('O documento foi gravado no Firestore, mas não pôde ser recuperado de volta.');
+      }
+
+      // 3. Measure delete time (cleanup)
+      const startDelete = performance.now();
+      await deleteDoc(docRef);
+      const endDelete = performance.now();
+      const deleteTime = Math.round(endDelete - startDelete);
+
+      setTestStatus('success');
+      setTestResult({
+        writeTimeMs: writeTime,
+        readTimeMs: readTime,
+        deleteTimeMs: deleteTime,
+        totalTimeMs: writeTime + readTime + deleteTime,
+        message: 'Conexão e gravação com o Firebase Firestore realizadas com sucesso!',
+        details: `Gravação: ${writeTime}ms | Leitura: ${readTime}ms | Limpeza: ${deleteTime}ms. Total: ${writeTime + readTime + deleteTime}ms.`
+      });
+    } catch (error: any) {
+      console.error("Firebase diagnostic test error:", error);
+      setTestStatus('error');
+      setTestResult({
+        message: 'Falha ao gravar ou ler dados no Firebase Firestore.',
+        details: error?.message || 'Erro de rede ou regras de segurança bloqueando a operação.'
+      });
+    }
+  };
 
   useEffect(() => {
     const stored = localStorage.getItem('domo_activities');
@@ -128,7 +205,6 @@ const Settings: React.FC<SettingsProps> = ({
   
   // Animation/Feedback states
   const [salvoComSucesso, setSalvoComSucesso] = useState(false);
-  const [showPaws, setShowPaws] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Technical configuration state
@@ -136,6 +212,12 @@ const Settings: React.FC<SettingsProps> = ({
   const [localZApi, setLocalZApi] = useState(zApiConfig);
   const [showScript, setShowScript] = useState(false);
   const [syncing, setSyncing] = useState<'none' | 'push' | 'pull'>('none');
+
+  const [communityGroupLink, setCommunityGroupLink] = useState(() => {
+    return localStorage.getItem('domo_community_group_link') || '';
+  });
+  const [contactSubject, setContactSubject] = useState('Sugestão / Dúvida - DOMO');
+  const [contactMessage, setContactMessage] = useState('');
 
   useEffect(() => {
     if (!tenantLoading) {
@@ -150,6 +232,32 @@ const Settings: React.FC<SettingsProps> = ({
   useEffect(() => {
     setLocalZApi(zApiConfig);
   }, [zApiConfig]);
+
+  useEffect(() => {
+    const fetchCommunityGroupLink = async () => {
+      // First try to load from localStorage cache so the UI is responsive immediately
+      const cached = localStorage.getItem('domo_community_group_link');
+      if (cached) {
+        setCommunityGroupLink(cached);
+      }
+      if (isFirebaseConfigured && db && auth.currentUser) {
+        try {
+          const tenantRef = doc(db, 'tenants', auth.currentUser.uid);
+          const docSnap = await getDoc(tenantRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.communityGroupLink) {
+              setCommunityGroupLink(data.communityGroupLink);
+              localStorage.setItem('domo_community_group_link', data.communityGroupLink);
+            }
+          }
+        } catch (error: any) {
+          console.warn("Aviso ao carregar link da comunidade do Firestore (pode estar offline):", error.message || error);
+        }
+      }
+    };
+    fetchCommunityGroupLink();
+  }, []);
 
   // Handle Logo Upload and convert to Base64 (so it fits inside localStorage perfectly)
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,14 +296,31 @@ const Settings: React.FC<SettingsProps> = ({
       slogan: domoSlogan.trim()
     });
 
-    // Trigger sweet bouncing paws animations
-    setShowPaws(true);
     setSalvoComSucesso(true);
 
     setTimeout(() => {
       setSalvoComSucesso(false);
-      setShowPaws(false);
     }, 4000);
+  };
+
+  const handleSaveCommunityGroupLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('domo_community_group_link', communityGroupLink.trim());
+    
+    if (isFirebaseConfigured && db && auth.currentUser) {
+      try {
+        const tenantRef = doc(db, 'tenants', auth.currentUser.uid);
+        const docSnap = await getDoc(tenantRef);
+        const currentData = docSnap.exists() ? docSnap.data() : {};
+        await setDoc(tenantRef, {
+          ...currentData,
+          communityGroupLink: communityGroupLink.trim()
+        });
+      } catch (error) {
+        console.error("Erro ao salvar link da comunidade no Firestore:", error);
+      }
+    }
+    alert('Link do grupo salvo com sucesso!');
   };
 
   const handleSaveZApi = () => {
@@ -369,17 +494,7 @@ const Settings: React.FC<SettingsProps> = ({
     <div className="min-h-screen bg-[#F0FAF6] py-10 px-4">
       <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500">
         
-        {/* Adorable custom jumping paws layer for the brand tab success */}
-        {showPaws && (
-          <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">
-            <div className="flex gap-4">
-              <span className="text-7xl animate-bounce-paw" style={{ animationDelay: '0s' }}>🐾</span>
-              <span className="text-7xl animate-bounce-paw shadow-sm" style={{ animationDelay: '0.15s' }}>🐾</span>
-              <span className="text-7xl animate-bounce-paw" style={{ animationDelay: '0.3s' }}>🐾</span>
-              <span className="text-7xl animate-bounce-paw" style={{ animationDelay: '0.45s' }}>🐾</span>
-            </div>
-          </div>
-        )}
+
 
         {/* Title Block */}
         <div className="text-center space-y-2">
@@ -768,178 +883,181 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         )}
 
-        {/* Tech Configuration Tab (WhatsApp, Sheets, Database ops, Exports) */}
+        {/* Tech Configuration Tab (Comunidade & Contato) */}
         {activeTab === 'tech' && (
-          <div className="bg-white rounded-[45px] p-8 border border-slate-100 shadow-xl space-y-8">
-            {/* Firebase Realtime Sync Info */}
-            <section className="space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Sincronização em Tempo Real</h3>
-              <div className="bg-emerald-50 p-8 rounded-[35px] border border-emerald-100 space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">🔥</span>
-                  <h4 className="text-[#085041] font-black uppercase text-sm">Firebase Sincronizado</h4>
-                </div>
-                <p className="text-emerald-800 text-xs font-semibold leading-relaxed">
-                  Seus dados de Pets, Checklists, Atividades, Grupos, Diário e Hospedagens estão sendo sincronizados automaticamente em tempo real com o banco de dados seguro do Firebase.
-                </p>
-                <div className="text-[10px] text-emerald-700 font-medium space-y-1">
-                  <p>✅ <strong>Nuvem Ativa:</strong> Todas as alterações feitas por você refletem instantaneamente em todos os seus dispositivos.</p>
-                  <p>✅ <strong>Sem Perda de Dados:</strong> Mesmo que você limpe o navegador, seus dados estarão salvos em segurança.</p>
-                  <p>✅ <strong>Multi-dispositivo:</strong> Celulares, computadores e tablets compartilham a mesma base automaticamente.</p>
-                </div>
+          <div className="space-y-8">
+            {/* Seção 1: Comunidade de Creches */}
+            <div className="bg-white rounded-[45px] p-8 border border-slate-100 shadow-xl space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+                <span className="text-2xl">🤝</span>
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Comunidade DOMO</h3>
               </div>
-            </section>
 
-            <section className="space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">WhatsApp Automático (Z-API)</h3>
-              <div className="bg-indigo-900 p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-                <div className="relative z-10 space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-2xl">🤖</div>
+              <div 
+                className="p-8 rounded-[35px] text-white space-y-6 relative overflow-hidden shadow-xl"
+                style={{
+                  background: `linear-gradient(135deg, ${domoCor} 0%, #1c3620 100%)`
+                }}
+              >
+                {/* Background decorative paw */}
+                <div className="absolute right-[-20px] bottom-[-20px] text-9xl text-white/5 pointer-events-none font-black select-none">
+                  🐾
+                </div>
+
+                <div className="space-y-2 relative z-10">
+                  <span className="text-xs bg-white/20 text-white font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                    Em breve
+                  </span>
+                  <h4 className="text-2xl font-black tracking-tight">Comunidade de Creches e Hotéis Parceiros</h4>
+                  <p className="text-xs text-white/85 leading-relaxed font-bold">
+                    Estamos criando um espaço exclusivo no WhatsApp para gestores de creches e hotéis parceiros trocarem ideias, compartilharem melhores práticas, tirarem dúvidas e crescerem juntos.
+                  </p>
+                </div>
+
+                <div className="bg-white/10 p-5 rounded-2xl border border-white/15 space-y-3 relative z-10">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">💬</span>
                     <div>
-                      <h4 className="text-white font-black text-lg tracking-tight leading-none">Configurar Automação</h4>
-                      <p className="text-indigo-300 text-[10px] font-black uppercase tracking-widest mt-1">Conecte sua conta Z-API</p>
+                      <h5 className="font-extrabold text-sm text-white">Grupo de WhatsApp</h5>
+                      <p className="text-[10px] text-white/70">Crie uma nova comunidade ou entre no canal oficial</p>
                     </div>
                   </div>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <label className="text-[9px] font-black text-indigo-300 uppercase tracking-widest ml-2 mb-1 block text-left">Instance ID</label>
-                        <input 
-                          type="text" 
-                          value={localZApi.instanceId}
-                          onChange={(e) => setLocalZApi({ ...localZApi, instanceId: e.target.value.trim() })}
-                          placeholder="Ex: 3C..."
-                          className="w-full p-4 bg-white/10 border border-white/20 rounded-2xl font-bold text-white outline-none focus:bg-white/20 transition-all placeholder:text-white/20"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-black text-indigo-300 uppercase tracking-widest ml-2 mb-1 block text-left">Token</label>
-                        <input 
-                          type="text" 
-                          value={localZApi.token}
-                          onChange={(e) => setLocalZApi({ ...localZApi, token: e.target.value.trim() })}
-                          placeholder="Identificador da Instância"
-                          className="w-full p-4 bg-white/10 border border-white/20 rounded-2xl font-bold text-white outline-none focus:bg-white/20 transition-all placeholder:text-white/20"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-black text-indigo-300 uppercase tracking-widest ml-2 mb-1 block text-left">Client Token (Security)</label>
-                        <input 
-                          type="password" 
-                          value={localZApi.clientToken}
-                          onChange={(e) => setLocalZApi({ ...localZApi, clientToken: e.target.value })}
-                          placeholder="Seu Token de Segurança"
-                          className="w-full p-4 bg-white/10 border border-white/20 rounded-2xl font-bold text-white outline-none focus:bg-white/20 transition-all placeholder:text-white/20"
-                        />
-                      </div>
-                    </div>
-                    <button 
-                      onClick={handleSaveZApi}
-                      className="w-full py-4 bg-indigo-500 hover:bg-indigo-400 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-xl active:scale-95"
+                  
+                  {communityGroupLink ? (
+                    <a
+                      href={communityGroupLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
                     >
-                      SALVAR CHAVES Z-API
+                      🚀 ENTRAR NO GRUPO AGORA
+                    </a>
+                  ) : (
+                    <div className="py-3 px-4 bg-white/5 rounded-xl border border-dashed border-white/15 text-center text-white/60 text-xs font-bold uppercase tracking-wider">
+                      ⏳ O link do grupo oficial será cadastrado abaixo!
+                    </div>
+                  )}
+                </div>
+
+                {/* Form to configure group link dynamically */}
+                <form onSubmit={handleSaveCommunityGroupLink} className="space-y-3 pt-2 relative z-10 border-t border-white/10">
+                  <p className="text-[10px] font-black text-white/70 uppercase tracking-widest">
+                    Configurar / Atualizar Link do Grupo da Comunidade
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="url"
+                      value={communityGroupLink}
+                      onChange={(e) => setCommunityGroupLink(e.target.value)}
+                      placeholder="Ex: https://chat.whatsapp.com/..."
+                      className="flex-1 p-3 bg-white/10 border border-white/20 rounded-xl font-bold text-white outline-none focus:bg-white/20 transition-all text-xs placeholder:text-white/30"
+                    />
+                    <button
+                      type="submit"
+                      className="px-5 py-3 bg-white text-[#085041] font-black rounded-xl text-xs uppercase tracking-wider transition-all hover:bg-slate-50 cursor-pointer shrink-0 shadow-md"
+                      style={{ color: domoCor }}
+                    >
+                      Salvar Link
                     </button>
                   </div>
-                </div>
+                  <p className="text-[9px] text-white/50 font-semibold italic">
+                    * Você pode criar o seu grupo do WhatsApp/Telegram e salvar o link de convite aqui.
+                  </p>
+                </form>
               </div>
-            </section>
+            </div>
 
-            <section className="space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Exportar Relatórios locais (CSV)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button 
-                  onClick={exportChecklists}
-                  className="p-6 bg-emerald-50 border border-emerald-100 rounded-[30px] text-center hover:bg-emerald-100 transition-all group animate-in"
-                >
-                  <span className="text-3xl block mb-2 group-hover:scale-110 transition-transform">🍱</span>
-                  <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Checklists</p>
-                  <p className="text-[8px] font-bold text-emerald-500 mt-1">Exportar CSV</p>
-                </button>
-                <button 
-                  onClick={exportMedications}
-                  className="p-6 bg-sky-50 border border-sky-100 rounded-[30px] text-center hover:bg-sky-100 transition-all group animate-in"
-                >
-                  <span className="text-3xl block mb-2 group-hover:scale-110 transition-transform">💊</span>
-                  <p className="text-[10px] font-black text-sky-700 uppercase tracking-widest">Medicações</p>
-                  <p className="text-[8px] font-bold text-sky-500 mt-1">Exportar CSV</p>
-                </button>
-                <button 
-                  onClick={exportHotel}
-                  className="p-6 bg-amber-50 border border-amber-100 rounded-[30px] text-center hover:bg-amber-100 transition-all group animate-in"
-                >
-                  <span className="text-3xl block mb-2 group-hover:scale-110 transition-transform">🏨</span>
-                  <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Hotel</p>
-                  <p className="text-[8px] font-bold text-amber-500 mt-1">Exportar CSV</p>
-                </button>
+            {/* Seção 2: Entrar em contato com Thaís */}
+            <div className="bg-white rounded-[45px] p-8 border border-slate-100 shadow-xl space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+                <span className="text-2xl">👩‍💻</span>
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Contato Direto</h3>
               </div>
-            </section>
 
-            <section className="space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Zona de Perigo</h3>
-              <div className="bg-rose-50 p-6 rounded-[35px] border border-rose-100 space-y-6">
-                <div className="flex items-start gap-4">
-                  <span className="text-3xl bg-white w-14 h-14 flex items-center justify-center rounded-[20px] shadow-sm">⚠️</span>
-                  <div>
-                    <h4 className="text-lg font-black text-rose-900">Limpeza Total de Dados</h4>
-                    <p className="text-xs font-bold text-rose-700/60 leading-relaxed">
-                      Esta ação irá apagar permanentemente todos os seus diários salvos, grupos criados e alterações que você fez nas fichas dos pets. Esta ação não pode ser desfeita.
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                {/* Visual Bio / Intro */}
+                <div className="md:col-span-2 space-y-4 bg-slate-50 p-6 rounded-[30px] border border-slate-100 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-emerald-100 text-3xl flex items-center justify-center border-2 border-white shadow-md animate-bounce">
+                      🙋‍♀️
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-black text-slate-800 leading-none">Thaís Silveira</h4>
+                      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-wider mt-1">Desenvolvedora do DOMO</p>
+                    </div>
+                    <p className="text-xs text-slate-500 font-bold leading-relaxed">
+                      Olá! Este sistema foi feito com muito carinho para ajudar no dia a dia da sua creche e hotel pet. Quero ouvir suas sugestões, feedbacks ou ajudar no que for preciso!
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 pt-4 border-t border-slate-200/50 text-[11px] text-slate-400 font-semibold">
+                    <p className="flex items-center gap-1.5">
+                      <span>✉️</span> thaissilveiravieira7@hotmail.com
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span>🇧🇷</span> Suporte Geral e Comunidades
                     </p>
                   </div>
                 </div>
 
-                {!confirmDelete ? (
-                  <button 
-                    onClick={() => setConfirmDelete(true)}
-                    className="w-full py-4 bg-rose-500 text-white font-black rounded-[25px] shadow-lg hover:bg-rose-600 transition-all active:scale-95"
-                  >
-                    APAGAR TODO MEU CADASTRO
-                  </button>
-                ) : (
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => setConfirmDelete(false)}
-                      className="flex-1 py-4 bg-white border-2 border-slate-200 text-slate-400 font-black rounded-[25px] transition-all"
-                    >
-                      CANCELAR
-                    </button>
-                    <button 
-                      onClick={handleReset}
-                      className="flex-2 py-4 bg-rose-600 text-white font-black rounded-[25px] shadow-xl hover:bg-rose-700 transition-all animate-pulse"
-                    >
-                      SIM, APAGAR TUDO AGORA!
-                    </button>
+                {/* Email Direct Contact Form */}
+                <div className="md:col-span-3 space-y-4">
+                  <h4 className="text-sm font-black text-slate-700 uppercase tracking-wider">Mande uma mensagem</h4>
+                  <p className="text-xs text-slate-400 font-bold leading-normal">
+                    Preencha os campos abaixo e clique no botão para abrir o seu e-mail com a mensagem pré-formatada ou iniciar conversa.
+                  </p>
+
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Assunto</label>
+                      <input
+                        type="text"
+                        value={contactSubject}
+                        onChange={(e) => setContactSubject(e.target.value)}
+                        placeholder="Ex: Sugestão de nova tela de faturamento"
+                        className="w-full p-3 bg-[#F9FBFA] border-2 border-[#E7EFEA] rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-emerald-300 transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sua Mensagem</label>
+                      <textarea
+                        value={contactMessage}
+                        onChange={(e) => setContactMessage(e.target.value)}
+                        rows={4}
+                        placeholder="Escreva aqui sugestões de melhoria, reporte bugs ou compartilhe suas ideias..."
+                        className="w-full p-3 bg-[#F9FBFA] border-2 border-[#E7EFEA] rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-emerald-300 transition-all resize-none"
+                      />
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                      <a
+                        href={`mailto:thaissilveiravieira7@hotmail.com?subject=${encodeURIComponent(contactSubject)}&body=${encodeURIComponent(contactMessage)}`}
+                        className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs uppercase tracking-widest text-center transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                        style={{ backgroundColor: domoCor }}
+                      >
+                        <span>✉️</span> Enviar por E-mail
+                      </a>
+                      
+                      <a
+                        href={`https://wa.me/5548991234567?text=${encodeURIComponent(`Olá Thaís! Assunto: ${contactSubject}. Mensagem: ${contactMessage}`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl text-xs uppercase tracking-widest text-center transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                      >
+                        <span>💬</span> Falar no WhatsApp
+                      </a>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-            </section>
+            </div>
           </div>
         )}
 
       </div>
 
       <style>{`
-        @keyframes bouncePaw {
-          0%, 100% {
-            transform: translateY(0) scale(1) rotate(0deg);
-          }
-          30% {
-            transform: translateY(-25px) scale(1.15) rotate(15deg);
-          }
-          50% {
-            transform: translateY(-30px) scale(1.15) rotate(-15deg);
-          }
-          70% {
-            transform: translateY(-25px) scale(1.15) rotate(10deg);
-          }
-        }
-        .animate-bounce-paw {
-          animation: bouncePaw 1s cubic-bezier(0.25, 1, 0.5, 1) infinite;
-          display: inline-block;
-          filter: drop-shadow(0 10px 8px rgba(0,0,0,0.12));
-        }
       `}</style>
     </div>
   );

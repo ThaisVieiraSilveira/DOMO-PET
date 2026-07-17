@@ -490,7 +490,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const filteredPets = useMemo(() => {
     return pets
       .filter(pet => {
-        const matchesDay = isPetOnDay(pet, selectedDay);
+        const matchesDay = selectedDay === 'Todos' || isPetOnDay(pet, selectedDay) || isPetInHotelToday(pet.id);
         const matchesSearch = 
           (pet.pet_nome || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
           (pet.id || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -716,11 +716,12 @@ const Dashboard: React.FC<DashboardProps> = ({
     onUpdatePet(updatedPet);
   };
 
-  // Direct fast save feeding
-  const handleQuickSave = async (e: React.MouseEvent, petId: string) => {
-    e.stopPropagation();
-    const eatVal = quickEntries[petId];
-    if (!eatVal) return alert('Selecione uma opção de alimentação primeiro.');
+  // Direct fast save feeding (automatically triggered on change)
+  const handleQuickSave = async (petId: string, customEatVal?: string, customObsVal?: string) => {
+    const eatVal = customEatVal !== undefined ? customEatVal : (quickEntries[petId] || '');
+    
+    // If there is absolutely no feeding value and no custom observation, do not save an incomplete checklist
+    if (!eatVal && customObsVal === undefined) return;
 
     setSavingId(petId);
     
@@ -729,15 +730,17 @@ const Dashboard: React.FC<DashboardProps> = ({
     const newEntry: ChecklistEntry = {
       petId,
       date: searchDate,
-      comeu: eatVal,
-      status: calculateStatus({ comeu: eatVal }),
+      comeu: eatVal || 'Pendente',
+      status: calculateStatus({ comeu: eatVal || 'Pendente' }),
       agua: existing?.agua || 'Pouca água',
       teveEstimuloHidratacao: existing?.teveEstimuloHidratacao || 'Não',
       comportamento: existing?.comportamento || '-',
       alertas: existing?.alertas || '-',
-      observacoes: Object.prototype.hasOwnProperty.call(quickEntries, `obs_${petId}`) 
-        ? (quickEntries[`obs_${petId}`] as string) 
-        : (existing?.observacoes || ''),
+      observacoes: customObsVal !== undefined 
+        ? customObsVal 
+        : (Object.prototype.hasOwnProperty.call(quickEntries, `obs_${petId}`) 
+            ? (quickEntries[`obs_${petId}`] as string) 
+            : (existing?.observacoes || '')),
       escoreFecal: existing?.escoreFecal || 3,
       quantoOferecido: existing?.quantoOferecido || '-',
       quantoSobrou: existing?.quantoSobrou || '-',
@@ -748,10 +751,10 @@ const Dashboard: React.FC<DashboardProps> = ({
       await onSaveChecklist(newEntry);
       setSavingId(null);
       setSavedId(petId);
-      setTimeout(() => setSavedId(null), 3000);
+      setTimeout(() => setSavedId(null), 2500);
     } catch (err) {
       setSavingId(null);
-      console.error("Erro ao salvar:", err);
+      console.error("Erro ao salvar automaticamente:", err);
     }
   };
 
@@ -1305,7 +1308,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <h1 className="text-4xl font-black tracking-tighter" style={{ color: domoCor }}>
                     Matilha {domoNome}
                   </h1>
-                  <p className="text-slate-400 font-extrabold text-xs uppercase tracking-widest mt-1">Painel Central de Gerenciamento e Escala canina</p>
+                  <p className="text-slate-400 font-extrabold text-xs uppercase tracking-widest mt-1">Painel Central de Gerenciamento e Escala Canina</p>
                 </div>
               </div>
 
@@ -1571,7 +1574,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter leading-tight" style={{ color: domoCor }}>
                   Matilha {domoNome}
                 </h1>
-                <p className="text-slate-500 font-black text-xs sm:text-sm uppercase tracking-wider mt-2">Painel Central de Gerenciamento e Escala canina</p>
+                <p className="text-slate-500 font-black text-xs sm:text-sm uppercase tracking-wider mt-2">Painel Central de Gerenciamento e Escala Canina</p>
               </div>
             </div>
 
@@ -2231,6 +2234,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="min-w-0 flex-1 text-left">
                     <h4 className="font-black text-base sm:text-lg text-slate-800 group-hover:text-emerald-700 leading-tight flex items-center flex-wrap gap-1.5 mt-0.5" title={pet.pet_nome}>
                       <span className="truncate max-w-[150px]">{pet.pet_nome}</span>
+                      {selectedDay !== 'Todos' && isPetOnDay(pet, selectedDay) && (
+                        <span className="inline-flex items-center text-[8px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded-md leading-none gap-0.5 uppercase tracking-wider">
+                          <span>☀️</span> CRECHE
+                        </span>
+                      )}
                       {isHotel && (
                         <span className="inline-flex items-center text-[8px] bg-indigo-600 text-white font-black px-1.5 py-0.5 rounded-md leading-none gap-0.5 uppercase tracking-wider">
                           <span>🏨</span> HOTEL
@@ -2362,20 +2370,21 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="space-y-2.5" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] sm:text-xs font-black text-emerald-850 uppercase tracking-wider">Alimentação Rápida</span>
-                    <button 
-                      type="button"
-                      onClick={(e) => handleQuickSave(e, pet.id)}
-                      disabled={savingId === pet.id}
-                      className={`px-4 py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all shadow-xs active:scale-95 ${
-                        savingId === pet.id 
-                          ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
-                          : savedId === pet.id
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-[1.01] hover:shadow-md border-b-2 border-emerald-800'
-                      }`}
-                    >
-                      {savingId === pet.id ? '⏳' : savedId === pet.id ? 'Salvo! ✔️' : 'Salvar'}
-                    </button>
+                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+                      {savingId === pet.id ? (
+                        <span className="text-amber-600 animate-pulse flex items-center gap-1">
+                          <span className="inline-block animate-spin">⏳</span> Salvando...
+                        </span>
+                      ) : savedId === pet.id ? (
+                        <span className="text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl flex items-center gap-1 border border-emerald-200 animate-bounce">
+                          ✔️ Salvo!
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 flex items-center gap-1 font-semibold">
+                          ☁️ Salvo Automático
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {activeStay && (
@@ -2406,7 +2415,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <button
                         key={opt.label}
                         type="button"
-                        onClick={() => setQuickEntries(prev => ({ ...prev, [pet.id]: opt.internal as any }))}
+                        onClick={() => {
+                          setQuickEntries(prev => ({ ...prev, [pet.id]: opt.internal as any }));
+                          handleQuickSave(pet.id, opt.internal);
+                        }}
                         className={`py-2 px-1 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-tight border transition-all flex items-center justify-center gap-1 active:scale-95 ${
                           quickEntries[pet.id] === opt.internal 
                             ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs scale-[1.01]' 
@@ -2425,6 +2437,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                       placeholder="Obs. rápida (opcional)..."
                       value={quickEntries[`obs_${pet.id}`] || ''}
                       onChange={(e) => setQuickEntries(prev => ({ ...prev, [`obs_${pet.id}`]: e.target.value }))}
+                      onBlur={(e) => handleQuickSave(pet.id, undefined, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleQuickSave(pet.id, undefined, (e.target as HTMLInputElement).value);
+                          (e.target as HTMLInputElement).blur();
+                        }
+                      }}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:border-emerald-300 shadow-inner"
                     />
                   </div>

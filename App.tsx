@@ -24,6 +24,7 @@ import { Pet, ChecklistEntry, PetGroup, Medication as MedicationType, Medication
 import { auth, db, isFirebaseConfigured } from './src/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { ensureAuthenticated, logSave, logLoad } from './utils/firestore';
 
 const App: React.FC = () => {
   const { pets, addPet, updatePet, deletePet: deletePetFromFirestore, loading: petsLoading, loadPetsFromFirestore } = usePets();
@@ -92,6 +93,8 @@ const App: React.FC = () => {
           fetched.push({ ...docSnap.data() } as ChecklistEntry);
         });
 
+        logLoad('checklists', tenantId, fetched.length);
+
         if (fetched.length > 0) {
           setChecklists(fetched);
           localStorage.setItem('domo_checklists', JSON.stringify(fetched));
@@ -102,10 +105,12 @@ const App: React.FC = () => {
           if (localChecklists.length > 0) {
             console.log(`[Sync] Enviando ${localChecklists.length} checklists locais para o Firestore...`);
             for (const entry of localChecklists) {
-              await setDoc(doc(db, 'checklists', `${entry.petId}_${entry.date}`), {
+              const checklistDocData = {
                 ...entry,
                 tenant_id: tenantId
-              });
+              };
+              logSave('checklists', `${entry.petId}_${entry.date}`, tenantId, checklistDocData);
+              await setDoc(doc(db, 'checklists', `${entry.petId}_${entry.date}`), checklistDocData);
             }
           }
         }
@@ -125,6 +130,8 @@ const App: React.FC = () => {
           fetched.push({ ...docSnap.data(), id: docSnap.id } as PetGroup);
         });
 
+        logLoad('groups', tenantId, fetched.length);
+
         if (fetched.length > 0) {
           setGroups(fetched);
           localStorage.setItem('domo_groups', JSON.stringify(fetched));
@@ -135,10 +142,12 @@ const App: React.FC = () => {
           if (localGroups.length > 0) {
             console.log(`[Sync] Enviando ${localGroups.length} grupos locais para o Firestore...`);
             for (const group of localGroups) {
-              await setDoc(doc(db, 'groups', group.id), {
+              const groupDocData = {
                 ...group,
                 tenant_id: tenantId
-              });
+              };
+              logSave('groups', group.id, tenantId, groupDocData);
+              await setDoc(doc(db, 'groups', group.id), groupDocData);
             }
           }
         }
@@ -158,6 +167,8 @@ const App: React.FC = () => {
           fetched.push({ ...docSnap.data(), id: docSnap.id } as MedicationType);
         });
 
+        logLoad('medications', tenantId, fetched.length);
+
         if (fetched.length > 0) {
           setMedications(fetched);
           localStorage.setItem('domo_medications', JSON.stringify(fetched));
@@ -168,10 +179,12 @@ const App: React.FC = () => {
           if (localMeds.length > 0) {
             console.log(`[Sync] Enviando ${localMeds.length} medicações locais para o Firestore...`);
             for (const med of localMeds) {
-              await setDoc(doc(db, 'medications', med.id), {
+              const medDocData = {
                 ...med,
                 tenant_id: tenantId
-              });
+              };
+              logSave('medications', med.id, tenantId, medDocData);
+              await setDoc(doc(db, 'medications', med.id), medDocData);
             }
           }
         }
@@ -191,6 +204,8 @@ const App: React.FC = () => {
           fetched.push({ ...docSnap.data() } as MedicationLog);
         });
 
+        logLoad('medication_logs', tenantId, fetched.length);
+
         if (fetched.length > 0) {
           setMedicationLogs(fetched);
           localStorage.setItem('domo_medication_logs', JSON.stringify(fetched));
@@ -202,10 +217,12 @@ const App: React.FC = () => {
             console.log(`[Sync] Enviando ${localLogs.length} logs de medicação locais para o Firestore...`);
             for (const log of localLogs) {
               const docId = `${log.medicationId}_${log.date}_${log.slot || 'default'}`;
-              await setDoc(doc(db, 'medication_logs', docId), {
+              const logDocData = {
                 ...log,
                 tenant_id: tenantId
-              });
+              };
+              logSave('medication_logs', docId, tenantId, logDocData);
+              await setDoc(doc(db, 'medication_logs', docId), logDocData);
             }
           }
         }
@@ -225,6 +242,8 @@ const App: React.FC = () => {
           fetched.push({ ...docSnap.data(), id: docSnap.id } as HotelStay);
         });
 
+        logLoad('hotelStays', tenantId, fetched.length);
+
         if (fetched.length > 0) {
           setHotelStays(fetched);
           localStorage.setItem('domo_hotel_stays', JSON.stringify(fetched));
@@ -234,10 +253,12 @@ const App: React.FC = () => {
           if (localStays.length > 0) {
             console.log(`[Sync] Enviando ${localStays.length} estadias de hotel locais para o Firestore...`);
             for (const stay of localStays) {
-              await setDoc(doc(db, 'hotelStays', stay.id), {
+              const stayDocData = {
                 ...stay,
                 tenant_id: tenantId
-              });
+              };
+              logSave('hotelStays', stay.id, tenantId, stayDocData);
+              await setDoc(doc(db, 'hotelStays', stay.id), stayDocData);
             }
           }
         }
@@ -325,6 +346,7 @@ const App: React.FC = () => {
   }, []);
 
   const saveChecklist = async (entry: ChecklistEntry) => {
+    const tenantId = ensureAuthenticated();
     const entryWithTimestamp = { ...entry, updatedAt: new Date().toISOString() };
     setChecklists(prev => {
       const filtered = prev.filter(c => !(c.petId === entry.petId && c.date === entry.date));
@@ -338,12 +360,14 @@ const App: React.FC = () => {
       return updated;
     });
 
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'checklists', `${entry.petId}_${entry.date}`), {
+        const checklistDocData = {
           ...entryWithTimestamp,
-          tenant_id: user.uid
-        });
+          tenant_id: tenantId
+        };
+        logSave('checklists', `${entry.petId}_${entry.date}`, tenantId, checklistDocData);
+        await setDoc(doc(db, 'checklists', `${entry.petId}_${entry.date}`), checklistDocData);
       } catch (e) {
         console.error("Erro ao salvar checklist no Firestore:", e);
       }
@@ -351,6 +375,7 @@ const App: React.FC = () => {
   };
 
   const updatePetMaster = async (updatedPet: Pet) => {
+    const tenantId = ensureAuthenticated();
     const exists = pets.some(p => p.id === updatedPet.id);
     if (exists) {
       await updatePet(updatedPet.id, updatedPet);
@@ -389,13 +414,15 @@ const App: React.FC = () => {
       localStorage.setItem('domo_groups', JSON.stringify(updatedGroups));
 
       // Also sync to Firestore
-      if (isFirebaseConfigured && db && user) {
+      if (isFirebaseConfigured && db) {
         updatedGroups.forEach(async (group) => {
           try {
-            await setDoc(doc(db, 'groups', group.id), {
+            const groupDocData = {
               ...group,
-              tenant_id: user.uid
-            }, { merge: true });
+              tenant_id: tenantId
+            };
+            logSave('groups', group.id, tenantId, groupDocData);
+            await setDoc(doc(db, 'groups', group.id), groupDocData, { merge: true });
           } catch (e) {
             console.error("Erro ao sincronizar grupo no updatePetMaster:", e);
           }
@@ -407,16 +434,19 @@ const App: React.FC = () => {
   };
 
   const saveGroups = async (newGroups: PetGroup[]) => {
+    const tenantId = ensureAuthenticated();
     setGroups(newGroups);
     localStorage.setItem('domo_groups', JSON.stringify(newGroups));
 
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
       try {
         for (const group of newGroups) {
-          await setDoc(doc(db, 'groups', group.id), {
+          const groupDocData = {
             ...group,
-            tenant_id: user.uid
-          });
+            tenant_id: tenantId
+          };
+          logSave('groups', group.id, tenantId, groupDocData);
+          await setDoc(doc(db, 'groups', group.id), groupDocData);
         }
       } catch (e) {
         console.error("Erro ao salvar grupos no Firestore:", e);
@@ -425,6 +455,7 @@ const App: React.FC = () => {
   };
 
   const saveMedication = async (med: MedicationType) => {
+    const tenantId = ensureAuthenticated();
     setMedications(prev => {
       const filtered = prev.filter(m => m.id !== med.id);
       const updated = [...filtered, med];
@@ -432,12 +463,14 @@ const App: React.FC = () => {
       return updated;
     });
 
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'medications', med.id), {
+        const medDocData = {
           ...med,
-          tenant_id: user.uid
-        });
+          tenant_id: tenantId
+        };
+        logSave('medications', med.id, tenantId, medDocData);
+        await setDoc(doc(db, 'medications', med.id), medDocData);
       } catch (e) {
         console.error("Erro ao salvar medicação no Firestore:", e);
       }
@@ -445,6 +478,7 @@ const App: React.FC = () => {
   };
 
   const deleteMedication = async (id: string) => {
+    const tenantId = ensureAuthenticated();
     setMedications(prev => {
       const updated = prev.filter(m => m.id !== id);
       localStorage.setItem('domo_medications', JSON.stringify(updated));
@@ -457,8 +491,9 @@ const App: React.FC = () => {
       return updated;
     });
 
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
       try {
+        console.log(`Deletando medicação ${id} pelo tenant ${tenantId}`);
         await deleteDoc(doc(db, 'medications', id));
       } catch (e) {
         console.error("Erro ao deletar medicação no Firestore:", e);
@@ -467,6 +502,7 @@ const App: React.FC = () => {
   };
 
   const saveMedicationLog = async (log: MedicationLog) => {
+    const tenantId = ensureAuthenticated();
     setMedicationLogs(prev => {
       const filtered = prev.filter(l => 
         !(l.medicationId === log.medicationId && l.date === log.date && (l.slot === log.slot || (!l.slot && !log.slot)))
@@ -476,13 +512,15 @@ const App: React.FC = () => {
       return updated;
     });
 
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
       try {
         const docId = `${log.medicationId}_${log.date}_${log.slot || 'default'}`;
-        await setDoc(doc(db, 'medication_logs', docId), {
+        const logDocData = {
           ...log,
-          tenant_id: user.uid
-        });
+          tenant_id: tenantId
+        };
+        logSave('medication_logs', docId, tenantId, logDocData);
+        await setDoc(doc(db, 'medication_logs', docId), logDocData);
       } catch (e) {
         console.error("Erro ao salvar log de medicação no Firestore:", e);
       }
@@ -490,6 +528,7 @@ const App: React.FC = () => {
   };
 
   const saveHotelStay = async (stay: HotelStay) => {
+    const tenantId = ensureAuthenticated();
     setHotelStays(prev => {
       const filtered = prev.filter(s => s.id !== stay.id);
       const updated = [...filtered, stay];
@@ -497,12 +536,14 @@ const App: React.FC = () => {
       return updated;
     });
 
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'hotelStays', stay.id), {
+        const stayDocData = {
           ...stay,
-          tenant_id: user.uid
-        });
+          tenant_id: tenantId
+        };
+        logSave('hotelStays', stay.id, tenantId, stayDocData);
+        await setDoc(doc(db, 'hotelStays', stay.id), stayDocData);
       } catch (e) {
         console.error("Erro ao salvar estadia no Firestore:", e);
       }
@@ -527,14 +568,16 @@ const App: React.FC = () => {
   };
 
   const deleteHotelStay = async (id: string) => {
+    const tenantId = ensureAuthenticated();
     setHotelStays(prev => {
       const updated = prev.filter(s => s.id !== id);
       localStorage.setItem('domo_hotel_stays', JSON.stringify(updated));
       return updated;
     });
 
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
       try {
+        console.log(`Deletando estadia de hotel ${id} pelo tenant ${tenantId}`);
         await deleteDoc(doc(db, 'hotelStays', id));
       } catch (e) {
         console.error("Erro ao deletar estadia no Firestore:", e);
@@ -632,7 +675,7 @@ const App: React.FC = () => {
               <Route path="/unico" element={<UnicoLooker pets={pets} />} />
               <Route path="/unico/:petId" element={<UnicoEdit pets={pets} onSave={updatePetMaster} />} />
               <Route path="/checklist_looker" element={<ChecklistLooker pets={pets} checklists={checklists} />} />
-              <Route path="/cadastro/:petId" element={<Cadastro pets={pets} onSave={updatePetMaster} />} />
+              <Route path="/cadastro/:petId" element={<Cadastro pets={pets} onSave={updatePetMaster} onDeletePet={deletePet} />} />
               <Route path="/grupos" element={<Groups pets={pets} groups={groups} onSaveGroups={saveGroups} />} />
               <Route path="/medicacao" element={<Medication pets={pets} medications={medications} medicationLogs={medicationLogs} onSaveMedication={saveMedication} onDeleteMedication={deleteMedication} onSaveLog={saveMedicationLog} />} />
               <Route path="/hotel" element={<Hotel pets={pets} hotelStays={hotelStays} medications={medications} medicationLogs={medicationLogs} onSaveStay={saveHotelStay} onDeleteStay={deleteHotelStay} onSaveMedLog={saveMedicationLog} onSaveMedication={saveMedication} />} />

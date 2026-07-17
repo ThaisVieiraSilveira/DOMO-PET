@@ -4,6 +4,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth, storage, isFirebaseConfigured } from '../firebase';
 import { HotelStay, HotelRecord, HotelReport } from '../../types';
+import { ensureAuthenticated, logSave, logLoad } from '../../utils/firestore';
 
 const LOCAL_STORAGE_KEYS = {
   stays: 'domo_hotel_stays_v2',
@@ -85,6 +86,7 @@ export function useHotel() {
             fetched.push({ ...docSnap.data(), id: docSnap.id } as HotelStay);
           });
           fetched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          logLoad('hotelStays', user.uid, fetched.length);
           setStays(fetched);
           localStorage.setItem(LOCAL_STORAGE_KEYS.stays, JSON.stringify(fetched));
         }, (err) => console.error("Erro stays:", err));
@@ -99,6 +101,7 @@ export function useHotel() {
             fetched.push({ ...docSnap.data(), id: docSnap.id } as HotelRecord);
           });
           fetched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          logLoad('hotelRecords', user.uid, fetched.length);
           setRecords(fetched);
           localStorage.setItem(LOCAL_STORAGE_KEYS.records, JSON.stringify(fetched));
         }, (err) => console.error("Erro records:", err));
@@ -113,6 +116,7 @@ export function useHotel() {
             fetched.push({ ...docSnap.data(), id: docSnap.id } as HotelReport);
           });
           fetched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          logLoad('hotelReports', user.uid, fetched.length);
           setReports(fetched);
           localStorage.setItem(LOCAL_STORAGE_KEYS.reports, JSON.stringify(fetched));
           setLoading(false);
@@ -166,9 +170,8 @@ export function useHotel() {
   };
 
   const addStay = async (stayData: Omit<HotelStay, 'id' | 'tenant_id' | 'createdAt' | 'updatedAt' | 'status'>) => {
-    const user = auth.currentUser;
+    const tenantId = ensureAuthenticated();
     const newId = doc(collection(db, 'hotelStays')).id || `stay_${Date.now()}`;
-    const tenantId = user ? user.uid : 'local-user';
 
     const newStay: HotelStay = {
       ...stayData,
@@ -184,8 +187,9 @@ export function useHotel() {
     setStays(updated);
     localStorage.setItem(LOCAL_STORAGE_KEYS.stays, JSON.stringify(updated));
 
-    // Save in Firebase if configured
-    if (isFirebaseConfigured && db && user) {
+    // Save in Firebase
+    if (isFirebaseConfigured && db) {
+      logSave('hotelStays', newId, tenantId, newStay);
       await setDoc(doc(db, 'hotelStays', newId), newStay);
     }
 
@@ -193,7 +197,7 @@ export function useHotel() {
   };
 
   const updateStay = async (stayId: string, fields: Partial<HotelStay>) => {
-    const user = auth.currentUser;
+    const tenantId = ensureAuthenticated();
     const current = stays.find(s => s.id === stayId);
     if (!current) return;
 
@@ -209,7 +213,8 @@ export function useHotel() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.stays, JSON.stringify(updated));
 
     // Save in Firebase
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
+      logSave('hotelStays', stayId, tenantId, updatedStay);
       await setDoc(doc(db, 'hotelStays', stayId), updatedStay, { merge: true });
     }
 
@@ -217,9 +222,8 @@ export function useHotel() {
   };
 
   const addRecord = async (recordData: Omit<HotelRecord, 'id' | 'tenant_id' | 'createdAt'>) => {
-    const user = auth.currentUser;
+    const tenantId = ensureAuthenticated();
     const newId = doc(collection(db, 'hotelRecords')).id || `rec_${Date.now()}`;
-    const tenantId = user ? user.uid : 'local-user';
 
     const newRecord: HotelRecord = {
       ...recordData,
@@ -234,7 +238,8 @@ export function useHotel() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.records, JSON.stringify(updated));
 
     // Save in Firebase
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
+      logSave('hotelRecords', newId, tenantId, newRecord);
       await setDoc(doc(db, 'hotelRecords', newId), newRecord);
     }
 
@@ -242,7 +247,7 @@ export function useHotel() {
   };
 
   const deleteRecord = async (recordId: string) => {
-    const user = auth.currentUser;
+    const tenantId = ensureAuthenticated();
 
     // Update state & localStorage
     const updated = records.filter(r => r.id !== recordId);
@@ -250,15 +255,15 @@ export function useHotel() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.records, JSON.stringify(updated));
 
     // Save in Firebase
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
+      console.log(`Deletando registro ${recordId} pelo tenant ${tenantId}`);
       await deleteDoc(doc(db, 'hotelRecords', recordId));
     }
   };
 
   const addReport = async (reportData: Omit<HotelReport, 'id' | 'tenant_id' | 'createdAt'>) => {
-    const user = auth.currentUser;
+    const tenantId = ensureAuthenticated();
     const newId = doc(collection(db, 'hotelReports')).id || `rep_${Date.now()}`;
-    const tenantId = user ? user.uid : 'local-user';
 
     const newReport: HotelReport = {
       ...reportData,
@@ -273,7 +278,8 @@ export function useHotel() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.reports, JSON.stringify(updated));
 
     // Save in Firebase
-    if (isFirebaseConfigured && db && user) {
+    if (isFirebaseConfigured && db) {
+      logSave('hotelReports', newId, tenantId, newReport);
       await setDoc(doc(db, 'hotelReports', newId), newReport);
     }
 

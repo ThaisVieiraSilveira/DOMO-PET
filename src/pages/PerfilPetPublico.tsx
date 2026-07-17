@@ -44,7 +44,7 @@ const PerfilPetPublico: React.FC = () => {
 
   // Core Data
   const [pet, setPet] = useState<Pet | null>(null);
-  const [crecheInfo, setCrecheInfo] = useState<{ nome: string; telefone: string } | null>(null);
+  const [crecheInfo, setCrecheInfo] = useState<{ nome: string; telefone: string; cor: string } | null>(null);
   const [activeHotelStay, setActiveHotelStay] = useState<HotelStay | null>(null);
   const [activeMedications, setActiveMedications] = useState<Medication[]>([]);
   const [todayChecklist, setTodayChecklist] = useState<ChecklistEntry | null>(null);
@@ -167,9 +167,33 @@ const PerfilPetPublico: React.FC = () => {
         setPet(petData);
 
         // 3. Creche / Tenant Info (mock/derived from user/tenant settings)
+        let crecheNome = 'Creche Domo Pet';
+        let crecheCor = '#085041'; // default Floresta Real color
+        const crecheTelefone = petData.telefone !== '-' ? petData.telefone : '11999999999';
+
+        if (isFirebaseConfigured && db && crecheId) {
+          try {
+            const tenantRef = doc(db, 'tenants', crecheId);
+            const tenantSnap = await getDoc(tenantRef);
+            if (tenantSnap.exists()) {
+              const tData = tenantSnap.data();
+              crecheNome = tData.nome || crecheNome;
+              crecheCor = tData.cor || crecheCor;
+            }
+          } catch (tErr) {
+            console.warn("Could not load tenant branding from Firestore:", tErr);
+          }
+        }
+
+        if (crecheId === 'local-user') {
+          crecheNome = localStorage.getItem('domo_nome') || 'Creche Domo Pet';
+          crecheCor = localStorage.getItem('domo_cor') || '#085041';
+        }
+
         setCrecheInfo({
-          nome: 'Creche Domo Pet',
-          telefone: petData.telefone !== '-' ? petData.telefone : '11999999999' // default fallback or pet contact
+          nome: crecheNome,
+          telefone: crecheTelefone,
+          cor: crecheCor
         });
 
         // 4. Fetch Stays & Medications (from Firestore with LocalStorage fallback)
@@ -570,16 +594,29 @@ const PerfilPetPublico: React.FC = () => {
     window.open(url, '_blank');
   };
 
+  const crecheCor = crecheInfo?.cor || '#085041';
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-24 text-left">
+    <div className="min-h-screen bg-[#FAF9F6] pb-24 text-left font-sans animate-in fade-in duration-500">
       
       {/* HEADER AMIGÁVEL DO PERFIL */}
-      <div className="bg-gradient-to-b from-indigo-900 to-indigo-950 text-white rounded-b-[50px] pb-12 pt-16 px-6 relative overflow-hidden text-center shadow-lg">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
+      <div 
+        className="rounded-b-[50px] pb-12 pt-16 px-6 relative overflow-hidden text-center shadow-sm border-b border-slate-100"
+        style={{ 
+          background: `linear-gradient(180deg, ${crecheCor}0c 0%, ${crecheCor}05 100%)`,
+        }}
+      >
+        <div 
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl opacity-20 pointer-events-none"
+          style={{ backgroundColor: crecheCor }}
+        ></div>
         
         {/* Frame Circular da Foto do Pet */}
         <div className="relative inline-block">
-          <div className="w-32 h-32 rounded-full border-4 border-white/90 bg-white/10 shadow-2xl overflow-hidden mx-auto flex items-center justify-center text-6xl">
+          <div 
+            className="w-32 h-32 rounded-full border-4 shadow-xl overflow-hidden mx-auto flex items-center justify-center text-6xl bg-white"
+            style={{ borderColor: crecheCor }}
+          >
             {pet.foto ? (
               <img 
                 src={pet.foto} 
@@ -599,11 +636,16 @@ const PerfilPetPublico: React.FC = () => {
         </div>
 
         {/* Informações Primárias */}
-        <h1 className="text-3xl font-black tracking-tight mt-6 mb-1 text-white">{pet.pet_nome}</h1>
-        <p className="text-indigo-200 text-xs font-black uppercase tracking-[0.2em]">{crecheInfo?.nome || 'Creche Domo Pet'}</p>
+        <h1 
+          className="text-3xl font-black tracking-tight mt-6 mb-1"
+          style={{ color: crecheCor }}
+        >
+          {pet.pet_nome}
+        </h1>
+        <p className="text-slate-500 text-xs font-black uppercase tracking-[0.2em]">{crecheInfo?.nome || 'Creche Domo Pet'}</p>
         
         {/* Última atualização */}
-        <p className="text-[10px] font-bold text-indigo-300/80 uppercase tracking-widest mt-4">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">
           {todayChecklist 
             ? `Última atualização hoje às ${new Date(todayChecklist.updatedAt || new Date()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
             : `Ficha atualizada recentemente`
@@ -611,8 +653,8 @@ const PerfilPetPublico: React.FC = () => {
         </p>
 
         {/* Texto curto de acolhimento */}
-        <p className="text-indigo-100/70 text-sm font-medium leading-relaxed max-w-sm mx-auto mt-4 px-4 italic">
-          “Olá, tutor! Aqui você acompanha os principais momentos de {pet.pet_nome}.”
+        <p className="text-slate-600 text-sm font-medium leading-relaxed max-w-sm mx-auto mt-4 px-4 italic">
+          “Aqui você acompanha os cuidados e momentos da {pet.pet_nome} durante o dia.”
         </p>
       </div>
 
@@ -620,8 +662,11 @@ const PerfilPetPublico: React.FC = () => {
 
         {/* CARD DO RESPONSÁVEL / TUTOR */}
         <div className="bg-white rounded-[35px] p-6 shadow-md border border-slate-100 space-y-4">
-          <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1.5">
-            <span>👤</span> CONTATOS DE SEGURANÇA
+          <h3 
+            className="text-xs font-black uppercase tracking-widest flex items-center gap-1.5"
+            style={{ color: crecheCor }}
+          >
+            <span>👤</span> Contato do tutor
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -637,7 +682,11 @@ const PerfilPetPublico: React.FC = () => {
           {crecheInfo?.telefone && (
             <button
               onClick={handleContactCreche}
-              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl shadow-lg shadow-emerald-500/15 text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-2"
+              className="w-full py-3.5 text-white font-black rounded-2xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-2 hover:opacity-90 active:scale-95 duration-200"
+              style={{ 
+                backgroundColor: crecheCor,
+                boxShadow: `0 10px 15px -3px ${crecheCor}25`
+              }}
             >
               <span>💬</span> Falar com a creche
             </button>
@@ -766,8 +815,8 @@ const PerfilPetPublico: React.FC = () => {
 
           <div className="relative border-l-2 border-slate-100 ml-3 pl-6 space-y-6 text-left">
             {timeline.filter(event => event.visivelTutor === true).length === 0 ? (
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest italic bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center -ml-6">
-                Nenhuma atualização disponível ainda.
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest italic bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center -ml-6 leading-relaxed">
+                Assim que a creche registrar um momento da {pet.pet_nome}, ele aparecerá aqui.
               </p>
             ) : (
               timeline.filter(event => event.visivelTutor === true).map(event => (
@@ -849,8 +898,8 @@ const PerfilPetPublico: React.FC = () => {
           {filteredMoments.length === 0 ? (
             <div className="p-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
               <span className="text-3xl opacity-50 block mb-2">📸</span>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                Os momentos de {pet.pet_nome} aparecerão aqui.
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                As fotos e momentos registrados pela creche aparecerão aqui.
               </p>
             </div>
           ) : (
@@ -882,12 +931,9 @@ const PerfilPetPublico: React.FC = () => {
 
           {bulletins.length === 0 ? (
             <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
                 Os boletins enviados pela creche aparecerão aqui.
               </p>
-              <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest mt-1 block">
-                Nenhum boletim disponível ainda
-              </span>
             </div>
           ) : (
             <div className="space-y-3">

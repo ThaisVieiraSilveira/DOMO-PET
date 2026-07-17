@@ -38,6 +38,7 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState<'master' | 'history' | 'messages' | 'unico' | 'tutor'>('messages');
+  const [subTab, setSubTab] = useState<'dados' | 'saude' | 'rotina' | 'alimentacao' | 'comportamento' | 'historico'>('dados');
   const pet = useMemo(() => pets.find(p => p.id === petId), [pets, petId]);
   
   const currentDayName = useMemo(() => {
@@ -760,140 +761,250 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
 
         {activeTab === 'master' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in zoom-in-95 duration-300">
-            {/* CARD DO LINK SEGURO DO TUTOR */}
-            <div className="bg-gradient-to-br from-indigo-900 to-indigo-950 text-white p-6 rounded-[35px] border border-indigo-850 shadow-xl md:col-span-2 space-y-4 text-left">
-              <div className="flex items-center justify-between">
-                <h4 className="text-[10px] font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2">
-                  ✨ LINK SEGURO DO PERFIL DO TUTOR
-                </h4>
-                <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${
-                  pet.tutorAccessEnabled ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
-                }`}>
-                  {pet.tutorAccessEnabled ? 'Ativo' : 'Inativo'}
-                </span>
-              </div>
+            {/* NAVEGAÇÃO RÁPIDA DA FICHA */}
+            <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-[24px] md:col-span-2 mb-2">
+              <button
+                type="button"
+                onClick={() => setSubTab('dados')}
+                className={`flex-1 min-w-[75px] py-2.5 px-3 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  subTab === 'dados' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                👤 Dados
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubTab('saude')}
+                className={`flex-1 min-w-[75px] py-2.5 px-3 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  subTab === 'saude' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                🏥 Saúde
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubTab('rotina')}
+                className={`flex-1 min-w-[75px] py-2.5 px-3 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  subTab === 'rotina' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                ⚡ Rotina
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubTab('alimentacao')}
+                className={`flex-1 min-w-[85px] py-2.5 px-3 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  subTab === 'alimentacao' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                🍱 Alimentação
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubTab('comportamento')}
+                className={`flex-1 min-w-[95px] py-2.5 px-3 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  subTab === 'comportamento' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                🧠 Comportamento
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubTab('historico')}
+                className={`flex-1 min-w-[75px] py-2.5 px-3 rounded-2xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  subTab === 'historico' ? 'bg-purple-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                📅 Histórico
+              </button>
+            </div>
 
-              {tutorMessage && (
-                <div className="bg-indigo-850/50 border border-indigo-500/20 text-indigo-200 text-xs font-bold py-2 px-4 rounded-xl text-center">
-                  {tutorMessage}
-                </div>
-              )}
+            {subTab === 'dados' && (
+              <>
+                {/* CARD DO LINK SEGURO DO TUTOR */}
+                <div className="bg-gradient-to-br from-indigo-900 to-indigo-950 text-white p-6 rounded-[35px] border border-indigo-850 shadow-xl md:col-span-2 space-y-4 text-left">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2">
+                      ✨ LINK SEGURO DO PERFIL DO TUTOR
+                    </h4>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${
+                      pet.tutorAccessEnabled ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
+                    }`}>
+                      {pet.tutorAccessEnabled ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
 
-              {tutorError && (
-                <div className="bg-rose-500/20 border border-rose-500/30 text-rose-200 text-xs font-bold py-2 px-4 rounded-xl text-center">
-                  ⚠️ {tutorError}
-                </div>
-              )}
+                  {tutorMessage && (
+                    <div className="bg-indigo-850/50 border border-indigo-500/20 text-indigo-200 text-xs font-bold py-2 px-4 rounded-xl text-center">
+                      {tutorMessage}
+                    </div>
+                  )}
 
-              <p className="text-indigo-200/70 text-[11px] font-medium leading-relaxed">
-                Este link permite que o tutor acompanhe de forma segura o perfil, rotina, fotos e atualizações do pet em tempo real, sem acessar a área administrativa.
-              </p>
+                  {tutorError && (
+                    <div className="bg-rose-500/20 border border-rose-500/30 text-rose-200 text-xs font-bold py-2 px-4 rounded-xl text-center">
+                      ⚠️ {tutorError}
+                    </div>
+                  )}
 
-              {pet.tutorAccessToken && pet.tutorAccessEnabled && (
-                <div className="bg-indigo-950/60 p-3 rounded-2xl border border-indigo-800/30">
-                  <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1">URL Pública Segura</p>
-                  <p className="text-[10px] font-mono text-indigo-200 select-all break-all leading-tight">
-                    {window.location.origin + '/#/perfil-pet/' + pet.tutorAccessToken}
+                  <p className="text-indigo-200/70 text-[11px] font-medium leading-relaxed">
+                    Este link permite que o tutor acompanhe de forma segura o perfil, rotina, fotos e atualizações do pet em tempo real, sem acessar a área administrativa.
                   </p>
+
+                  {pet.tutorAccessToken && pet.tutorAccessEnabled && (
+                    <div className="bg-indigo-950/60 p-3 rounded-2xl border border-indigo-800/30">
+                      <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1">URL Pública Segura</p>
+                      <p className="text-[10px] font-mono text-indigo-200 select-all break-all leading-tight">
+                        {window.location.origin + '/#/perfil-pet/' + pet.tutorAccessToken}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[9px] uppercase tracking-widest py-3 px-2 rounded-xl transition-all shadow-md text-center flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <span>🔗</span> {pet.tutorAccessToken && pet.tutorAccessEnabled ? 'Copiar Link' : 'Gerar e Copiar'}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={handleOpenAsTutor}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-md font-black text-[9px] uppercase tracking-widest py-3 px-2 rounded-xl transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <span>📱</span> Abrir Tutor
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDisableLink}
+                      disabled={!pet.tutorAccessToken || !pet.tutorAccessEnabled}
+                      className={`font-black text-[9px] uppercase tracking-widest py-3 px-2 rounded-xl transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
+                        pet.tutorAccessToken && pet.tutorAccessEnabled
+                          ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-md'
+                          : 'bg-indigo-900/30 text-indigo-400/40 cursor-not-allowed'
+                      }`}
+                    >
+                      <span>🛑</span> Desativar
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleGenerateNewLink}
+                      className="bg-sky-600 hover:bg-sky-500 text-white font-black text-[9px] uppercase tracking-widest py-3 px-2 rounded-xl transition-all shadow-md text-center flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <span>🔄</span> Novo Link
+                    </button>
+                  </div>
                 </div>
-              )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[9px] uppercase tracking-widest py-3 px-2 rounded-xl transition-all shadow-md text-center flex items-center justify-center gap-1"
-                >
-                  <span>🔗</span> {pet.tutorAccessToken && pet.tutorAccessEnabled ? 'Copiar Link' : 'Gerar e Copiar'}
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={handleOpenAsTutor}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-md font-black text-[9px] uppercase tracking-widest py-3 px-2 rounded-xl transition-all text-center flex items-center justify-center gap-1"
-                >
-                  <span>📱</span> Abrir Tutor
-                </button>
+                {/* DADOS BÁSICOS DO TUTOR */}
+                <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4 text-left md:col-span-2">
+                  <h4 className="text-[10px] font-black text-sky-500 uppercase tracking-widest flex items-center gap-2">👤 DADOS DO TUTOR E PET</h4>
+                  <div className="space-y-2">
+                    <StaticRow label="RESPONSÁVEL" value={pet.tutor_nome} />
+                    <StaticRow label="TELEFONE" value={pet.telefone} />
+                    <StaticRow label="AGENDA DE CRECHE" value={pet.dia_semana} />
+                    <StaticRow label="RAÇA" value={pet.raca || 'Não informada'} />
+                    <StaticRow label="DATA DE ANIVERSÁRIO" value={(!pet.data_aniversario || pet.data_aniversario === 'Não sei informar') ? 'Não informada' : pet.data_aniversario} />
+                  </div>
+                </div>
+              </>
+            )}
 
-                <button
-                  type="button"
-                  onClick={handleDisableLink}
-                  disabled={!pet.tutorAccessToken || !pet.tutorAccessEnabled}
-                  className={`font-black text-[9px] uppercase tracking-widest py-3 px-2 rounded-xl transition-all text-center flex items-center justify-center gap-1 ${
-                    pet.tutorAccessToken && pet.tutorAccessEnabled
-                      ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-md'
-                      : 'bg-indigo-900/30 text-indigo-400/40 cursor-not-allowed'
-                  }`}
-                >
-                  <span>🛑</span> Desativar
-                </button>
+            {subTab === 'saude' && (
+              <>
+                <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4 md:col-span-2 text-left">
+                  <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-2">🏥 SAÚDE E RESTRIÇÃO</h4>
+                  <div className="space-y-2">
+                    <StaticRow label="ALERGIA" value={pet.possui_alergia} color={(pet.possui_alergia || '').toLowerCase() === 'sim' ? 'text-rose-600' : ''} />
+                    <StaticRow label="ALIMENTOS PROIBIDOS" value={pet.alimentos_proibidos} />
+                    <StaticRow label="DIETA" value={pet.tipo_alimentacao} />
+                  </div>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={handleGenerateNewLink}
-                  className="bg-sky-600 hover:bg-sky-500 text-white font-black text-[9px] uppercase tracking-widest py-3 px-2 rounded-xl transition-all shadow-md text-center flex items-center justify-center gap-1"
-                >
-                  <span>🔄</span> Novo Link
-                </button>
+                <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4 md:col-span-2 text-left">
+                  <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">💊 SAÚDE DETALHADA</h4>
+                  <div className="space-y-2">
+                    <StaticRow label="POSSUI DOENÇA?" value={pet.possui_doenca} color={(pet.possui_doenca || '').toLowerCase() === 'sim' ? 'text-amber-600' : ''} />
+                    <StaticRow label="QUAIS DOENÇAS?" value={pet.doenca_qual} />
+                    <StaticRow label="PESO ATUAL" value={(!pet.peso_pet || Number(pet.peso_pet) === 0 || pet.peso_pet === '0') ? 'Não informado' : `${pet.peso_pet} KG`} />
+                    <StaticRow label="ESCORE CORPORAL" value={pet.escore_corporal} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {subTab === 'rotina' && (
+              <>
+                <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4 md:col-span-2 text-left">
+                  <h4 className="text-[10px] font-black text-cyan-500 uppercase tracking-widest flex items-center gap-2">💧 HIDRATAÇÃO</h4>
+                  <div className="space-y-2">
+                    <StaticRow label="INGESTÃO DIÁRIA" value={pet.ingestao_agua} />
+                    <StaticRow label="INTERESSE POR ÁGUA" value={pet.interesse_agua} />
+                    <StaticRow label="AJUDA / ESTÍMULO" value={pet.ajuda_beber_agua} />
+                    <StaticRow label="SEDE PÓS-CRECHE" value={pet.sede_pos_creche} />
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4 md:col-span-2 text-left">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">📝 OBSERVAÇÕES DO PRONTUÁRIO</h4>
+                  <div className="bg-slate-50 p-4 rounded-2xl">
+                    <p className="text-[11px] font-bold text-slate-600 leading-relaxed italic">
+                      {pet.observacoes || "Nenhuma observação especial registrada na ficha mestre."}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {subTab === 'alimentacao' && (
+              <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4 md:col-span-2 text-left">
+                <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">🍱 ALIMENTAÇÃO E DIETA</h4>
+                <div className="space-y-2">
+                  <StaticRow label="TIPO DE ALIMENTAÇÃO" value={pet.tipo_alimentacao} />
+                  <StaticRow label="MARCA DA RAÇÃO" value={pet.marca_racao} />
+                  <StaticRow label="QUANTIDADE APROXIMADA" value={pet.quantidade_aproximada} />
+                  <StaticRow label="ALIMENTOS PROIBIDOS" value={pet.alimentos_proibidos} />
+                  <StaticRow label="COMPORTAMENTO ALIMENTAR" value={pet.comportamento_alimentar} />
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4 text-left">
-              <h4 className="text-[10px] font-black text-sky-500 uppercase tracking-widest flex items-center gap-2">👤 DADOS DO TUTOR</h4>
-              <div className="space-y-2">
-                <StaticRow label="RESPONSÁVEL" value={pet.tutor_nome} />
-                <StaticRow label="TELEFONE" value={pet.telefone} />
-                <StaticRow label="AGENDA" value={pet.dia_semana} />
+            {subTab === 'comportamento' && (
+              <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4 md:col-span-2 text-left">
+                <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-2">🧠 COMPORTAMENTO E ADAPTAÇÃO</h4>
+                <div className="space-y-2">
+                  <StaticRow label="COMPORTAMENTO AO COMER" value={pet.comportamento_alimentar} />
+                  <StaticRow label="ESTÍMULO NECESSÁRIO" value={pet.precisa_estimulo} />
+                  <StaticRow label="OBSERVAÇÕES DO PRONTUÁRIO" value={pet.observacoes || 'Nenhuma registrada'} />
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4">
-              <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-2">🏥 SAÚDE E RESTRIÇÃO</h4>
-              <div className="space-y-2">
-                <StaticRow label="ALERGIA" value={pet.possui_alergia} color={(pet.possui_alergia || '').toLowerCase() === 'sim' ? 'text-rose-600' : ''} />
-                <StaticRow label="PROIBIDOS" value={pet.alimentos_proibidos} />
-                <StaticRow label="DIETA" value={pet.tipo_alimentacao} />
+            {subTab === 'historico' && (
+              <div className="md:col-span-2 space-y-3 text-left">
+                <h4 className="text-[10px] font-black text-purple-500 uppercase tracking-widest flex items-center gap-2 mb-2">📅 HISTÓRICO DE ESTADIAS / CHECKLISTS</h4>
+                {history.length === 0 ? (
+                  <div className="p-20 text-center bg-white rounded-[40px] opacity-20 font-black uppercase">
+                    SEM HISTÓRICO
+                  </div>
+                ) : (
+                  history.map((entry, i) => (
+                    <div key={i} className="bg-white p-5 rounded-[30px] border border-slate-100 shadow-sm flex items-center justify-between">
+                      <div>
+                        <p className="font-black text-slate-800 text-sm">{new Date(entry.date + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                          {entry.comeu} {entry.observacoes ? `• ${entry.observacoes.substring(0, 30)}...` : ''}
+                        </p>
+                      </div>
+                      <span className={`px-4 py-1.5 rounded-full text-[9px] font-black text-white ${entry.status === 'OK' ? 'bg-emerald-500' : 'bg-rose-500'}`}>{entry.status}</span>
+                    </div>
+                  ))
+                )}
               </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4">
-              <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">🍱 NUTRIÇÃO E COMPORTAMENTO</h4>
-              <div className="space-y-2">
-                <StaticRow label="MARCA DA RAÇÃO" value={pet.marca_racao} />
-                <StaticRow label="QUANTIDADE" value={pet.quantidade_aproximada} />
-                <StaticRow label="COMPORTAMENTO ALIMENTAR" value={pet.comportamento_alimentar} />
-                <StaticRow label="ESTÍMULO NECESSÁRIO" value={pet.precisa_estimulo} />
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4">
-              <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">💊 SAÚDE DETALHADA</h4>
-              <div className="space-y-2">
-                <StaticRow label="POSSUI DOENÇA?" value={pet.possui_doenca} color={(pet.possui_doenca || '').toLowerCase() === 'sim' ? 'text-amber-600' : ''} />
-                <StaticRow label="QUAIS DOENÇAS?" value={pet.doenca_qual} />
-                <StaticRow label="PESO ATUAL" value={`${pet.peso_pet} KG`} />
-                <StaticRow label="ESCORE CORPORAL" value={pet.escore_corporal} />
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4">
-              <h4 className="text-[10px] font-black text-cyan-500 uppercase tracking-widest flex items-center gap-2">💧 HIDRATAÇÃO</h4>
-              <div className="space-y-2">
-                <StaticRow label="INGESTÃO DIÁRIA" value={pet.ingestao_agua} />
-                <StaticRow label="INTERESSE POR ÁGUA" value={pet.interesse_agua} />
-                <StaticRow label="AJUDA / ESTÍMULO" value={pet.ajuda_beber_agua} />
-                <StaticRow label="SEDE PÓS-CRECHE" value={pet.sede_pos_creche} />
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-[35px] border border-slate-100 shadow-sm space-y-4">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">📝 OBSERVAÇÕES DO PRONTUÁRIO</h4>
-              <div className="bg-slate-50 p-4 rounded-2xl">
-                <p className="text-[11px] font-bold text-slate-600 leading-relaxed italic">
-                  {pet.observacoes || "Nenhuma observação especial registrada na ficha mestre."}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
         )}
 

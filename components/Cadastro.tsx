@@ -5,9 +5,10 @@ import { Pet } from '../types';
 interface CadastroProps {
   pets: Pet[];
   onSave: (pet: Pet) => void;
+  onDeletePet?: (id: string) => void;
 }
 
-const Cadastro: React.FC<CadastroProps> = ({ pets, onSave }) => {
+const Cadastro: React.FC<CadastroProps> = ({ pets, onSave, onDeletePet }) => {
   const { petId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,6 +17,7 @@ const Cadastro: React.FC<CadastroProps> = ({ pets, onSave }) => {
   const [formData, setFormData] = useState<Pet | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const queryParams = new URLSearchParams(location.search);
   const redirectPath = queryParams.get('redirect');
@@ -233,7 +235,7 @@ const Cadastro: React.FC<CadastroProps> = ({ pets, onSave }) => {
         </div>
         <div className="flex-grow text-center md:text-left z-10">
           <p className="text-[10px] font-black text-emerald-300 uppercase tracking-[0.3em] mb-1">
-            {isNew ? 'NOVO REGISTRO NO SISTEMA' : 'REGISTRO MESTRE COMPLETO'}
+            {isNew ? 'NOVO REGISTRO NO SISTEMA' : 'FICHA DO PET'}
           </p>
           <div className="flex flex-col md:flex-row md:items-center gap-4">
              <input 
@@ -428,7 +430,59 @@ const Cadastro: React.FC<CadastroProps> = ({ pets, onSave }) => {
           </button>
         </div>
 
+        {/* BOTÃO DE EXCLUIR CADASTRO */}
+        {!isNew && onDeletePet && formData && (
+          <div className="pt-4 pb-2">
+            <button 
+              type="button"
+              onClick={() => setIsConfirmingDelete(true)}
+              className="w-full py-4 bg-rose-50 hover:bg-rose-100 text-rose-700 font-black rounded-[35px] text-sm uppercase tracking-widest border border-rose-200 transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+            >
+              <span>🗑️</span> Excluir Cadastro do Pet
+            </button>
+          </div>
+        )}
+
       </form>
+
+      {/* CONFIRMAÇÃO DE EXCLUSÃO DE PET */}
+      {isConfirmingDelete && formData && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 text-left">
+          <div className="bg-white rounded-[35px] border border-slate-100 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="text-left">
+              <h4 className="text-xl font-black text-slate-800 leading-none">
+                Excluir cadastro do pet?
+              </h4>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Essa ação é permanente e não poderá ser desfeita. Todos os dados, histórico de saúde, relatórios e registros do pet serão removidos permanentemente do sistema.
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setIsConfirmingDelete(false)}
+                className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-2xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (onDeletePet && formData.id) {
+                    await onDeletePet(formData.id);
+                    setIsConfirmingDelete(false);
+                    navigate('/cadastro');
+                  }
+                }}
+                className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md"
+              >
+                Excluir Pet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

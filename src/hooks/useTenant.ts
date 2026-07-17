@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth, isFirebaseConfigured } from '../firebase';
+import { ensureAuthenticated, logSave, logLoad } from '../../utils/firestore';
 
 const LOCAL_STORAGE_KEYS = {
   nome: 'domo_nome',
@@ -121,11 +122,12 @@ export function useTenant() {
         const docSnap = await getDoc(tenantRef);
 
         if (active) {
+          logLoad('tenants', user.uid, docSnap.exists() ? 1 : 0);
           if (docSnap.exists()) {
             const data = docSnap.data();
-            let fetchedNome = data.nome || DEFAULT_VALUES.nome;
-            let fetchedCor = data.cor || DEFAULT_VALUES.cor;
-            let fetchedLogo = data.logo || DEFAULT_VALUES.logo;
+            let fetchedNome = data.nome || data.nomeCreche || DEFAULT_VALUES.nome;
+            let fetchedCor = data.cor || data.corPrincipal || DEFAULT_VALUES.cor;
+            let fetchedLogo = data.logo || data.logoUrl || DEFAULT_VALUES.logo;
             let fetchedSlogan = data.slogan || DEFAULT_VALUES.slogan;
             let fetchedSlug = data.slug || generateSlug(fetchedNome);
 
@@ -136,13 +138,22 @@ export function useTenant() {
               fetchedSlogan = 'Gestão canina de ponta a ponta';
               fetchedSlug = 'domo';
 
-              setDoc(tenantRef, {
+              const initTenantData = {
                 nome: fetchedNome,
                 cor: fetchedCor,
                 logo: fetchedLogo,
                 slogan: fetchedSlogan,
-                slug: fetchedSlug
-              }).catch(err => console.error("Erro ao migrar tenant:", err));
+                slug: fetchedSlug,
+                tenant_id: user.uid,
+                nomeCreche: fetchedNome,
+                logoUrl: fetchedLogo,
+                corPrincipal: fetchedCor,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+
+              logSave('tenants', user.uid, user.uid, initTenantData);
+              setDoc(tenantRef, initTenantData).catch(err => console.error("Erro ao migrar tenant:", err));
             }
 
             setNome(fetchedNome);
@@ -207,13 +218,40 @@ export function useTenant() {
   }, []);
 
   const salvar = async (novosDados: { nome: string; cor: string; logo?: string; slogan?: string }) => {
+    // Block saving if not logged in
+    const tenantId = ensureAuthenticated();
     const finalSlug = generateSlug(novosDados.nome);
+
+    // Fetch existing doc to preserve createdAt
+    let createdAt = new Date().toISOString();
+    if (isFirebaseConfigured && db) {
+      try {
+        const tenantRef = doc(db, 'tenants', tenantId);
+        const docSnap = await getDoc(tenantRef);
+        if (docSnap.exists()) {
+          const currentData = docSnap.data();
+          if (currentData.createdAt) {
+            createdAt = currentData.createdAt;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch existing tenant data for createdAt:", err);
+      }
+    }
+
     const dadosParaSalvar = {
       nome: novosDados.nome,
       cor: novosDados.cor,
       logo: novosDados.logo || '',
       slogan: novosDados.slogan || '',
       slug: finalSlug,
+      // Naming conventions requested by the user
+      tenant_id: tenantId,
+      nomeCreche: novosDados.nome,
+      logoUrl: novosDados.logo || '',
+      corPrincipal: novosDados.cor,
+      createdAt,
+      updatedAt: new Date().toISOString()
     };
 
     // 1. Gravar no localStorage
@@ -224,9 +262,10 @@ export function useTenant() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.slug, dadosParaSalvar.slug);
 
     // 2. Gravar no Firestore se estiver logado e configurado
-    if (isFirebaseConfigured && db && auth.currentUser) {
+    if (isFirebaseConfigured && db) {
       try {
-        const tenantRef = doc(db, 'tenants', auth.currentUser.uid);
+        const tenantRef = doc(db, 'tenants', tenantId);
+        logSave('tenants', tenantId, tenantId, dadosParaSalvar);
         await setDoc(tenantRef, dadosParaSalvar);
       } catch (error) {
         console.error("Erro ao salvar configurações do Tenant:", error);
