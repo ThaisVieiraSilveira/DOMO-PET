@@ -182,10 +182,10 @@ export function useHotel() {
       updatedAt: new Date().toISOString(),
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "hotelStays",
       documentId: newId,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: newStay
     });
 
@@ -194,9 +194,9 @@ export function useHotel() {
       try {
         logSave('hotelStays', newId, tenantId, newStay);
         await setDoc(doc(db, 'hotelStays', newId), newStay);
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }
@@ -224,10 +224,10 @@ export function useHotel() {
       updatedAt: new Date().toISOString(),
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "hotelStays",
       documentId: stayId,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: updatedStay
     });
 
@@ -236,9 +236,9 @@ export function useHotel() {
       try {
         logSave('hotelStays', stayId, tenantId, updatedStay);
         await setDoc(doc(db, 'hotelStays', stayId), updatedStay, { merge: true });
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }
@@ -266,10 +266,10 @@ export function useHotel() {
       createdAt: new Date().toISOString(),
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "hotelRecords",
       documentId: newId,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: newRecord
     });
 
@@ -278,9 +278,9 @@ export function useHotel() {
       try {
         logSave('hotelRecords', newId, tenantId, newRecord);
         await setDoc(doc(db, 'hotelRecords', newId), newRecord);
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }
@@ -300,10 +300,11 @@ export function useHotel() {
   const deleteRecord = async (recordId: string) => {
     const tenantId = ensureAuthenticated();
 
-    console.log("DELETANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR (DELETAR)", {
       collectionName: "hotelRecords",
       documentId: recordId,
-      tenant_id: tenantId
+      userUid: tenantId,
+      payload: null
     });
 
     // 1. Save in Firebase first
@@ -311,9 +312,9 @@ export function useHotel() {
       try {
         console.log(`Deletando registro ${recordId} pelo tenant ${tenantId}`);
         await deleteDoc(doc(db, 'hotelRecords', recordId));
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }
@@ -339,10 +340,10 @@ export function useHotel() {
       createdAt: new Date().toISOString(),
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "hotelReports",
       documentId: newId,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: newReport
     });
 
@@ -351,9 +352,9 @@ export function useHotel() {
       try {
         logSave('hotelReports', newId, tenantId, newReport);
         await setDoc(doc(db, 'hotelReports', newId), newReport);
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }

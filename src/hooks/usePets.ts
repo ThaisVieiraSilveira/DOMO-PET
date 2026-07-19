@@ -95,8 +95,20 @@ export function usePets() {
                       tenant_id: user.uid,
                       criado_em: new Date().toISOString()
                     };
+                    console.log("TENTANDO SALVAR", {
+                      collectionName: "pets",
+                      documentId: localPet.id,
+                      userUid: user.uid,
+                      payload: migrationData
+                    });
                     logSave('pets', localPet.id, user.uid, migrationData);
-                    await setDoc(petDocRef, migrationData);
+                    try {
+                      await setDoc(petDocRef, migrationData);
+                    } catch (error: any) {
+                      console.error("ERRO COMPLETO FIRESTORE", error);
+                      alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
+                      throw error;
+                    }
                   }
                   // Let onSnapshot pick up the newly uploaded pets automatically
                 } else {
@@ -147,10 +159,10 @@ export function usePets() {
       criado_em: new Date().toISOString(),
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "pets",
       documentId: newId,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: documentData
     });
 
@@ -160,9 +172,9 @@ export function usePets() {
         const petDocRef = doc(db, 'pets', newId);
         logSave('pets', newId, tenantId, documentData);
         await setDoc(petDocRef, documentData);
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }
@@ -198,10 +210,10 @@ export function usePets() {
       updatedAt: new Date().toISOString(),
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "pets",
       documentId: petId,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: dataToSave
     });
 
@@ -211,9 +223,9 @@ export function usePets() {
         const petDocRef = doc(db, 'pets', petId);
         logSave('pets', petId, tenantId, dataToSave);
         await setDoc(petDocRef, dataToSave, { merge: true });
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }
@@ -233,10 +245,11 @@ export function usePets() {
   const deletePet = async (petId: string) => {
     const tenantId = ensureAuthenticated();
 
-    console.log("DELETANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR (DELETAR)", {
       collectionName: "pets",
       documentId: petId,
-      tenant_id: tenantId
+      userUid: tenantId,
+      payload: null
     });
 
     // 1. Remove from Firestore first
@@ -245,9 +258,9 @@ export function usePets() {
         const petDocRef = doc(db, 'pets', petId);
         console.log(`Deletando pet ${petId} do Firestore pelo tenant ${tenantId}`);
         await deleteDoc(petDocRef);
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }

@@ -135,19 +135,19 @@ const Ajustes: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
 
-      console.log("SALVANDO NO FIRESTORE", {
+      console.log("TENTANDO SALVAR", {
         collectionName: "tenants",
         documentId: tenantId,
-        tenant_id: tenantId,
+        userUid: tenantId,
         payload: tenantData
       });
 
       if (isFirebaseConfigured) {
         try {
           await setDoc(doc(db, 'tenants', tenantId), tenantData, { merge: true });
-        } catch (error) {
-          console.error("ERRO FIRESTORE", error);
-          alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+        } catch (error: any) {
+          console.error("ERRO COMPLETO FIRESTORE", error);
+          alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
           setIsSaving(false);
           return;
         }

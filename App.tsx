@@ -110,7 +110,18 @@ const App: React.FC = () => {
                 tenant_id: tenantId
               };
               logSave('checklists', `${entry.petId}_${entry.date}`, tenantId, checklistDocData);
-              await setDoc(doc(db, 'checklists', `${entry.petId}_${entry.date}`), checklistDocData);
+              try {
+                console.log("TENTANDO SALVAR", {
+                  collectionName: "checklists",
+                  documentId: `${entry.petId}_${entry.date}`,
+                  userUid: tenantId,
+                  payload: checklistDocData
+                });
+                await setDoc(doc(db, 'checklists', `${entry.petId}_${entry.date}`), checklistDocData);
+              } catch (error: any) {
+                console.error("ERRO COMPLETO FIRESTORE", error);
+                alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
+              }
             }
           }
         }
@@ -147,7 +158,18 @@ const App: React.FC = () => {
                 tenant_id: tenantId
               };
               logSave('groups', group.id, tenantId, groupDocData);
-              await setDoc(doc(db, 'groups', group.id), groupDocData);
+              try {
+                console.log("TENTANDO SALVAR", {
+                  collectionName: "groups",
+                  documentId: group.id,
+                  userUid: tenantId,
+                  payload: groupDocData
+                });
+                await setDoc(doc(db, 'groups', group.id), groupDocData);
+              } catch (error: any) {
+                console.error("ERRO COMPLETO FIRESTORE", error);
+                alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
+              }
             }
           }
         }
@@ -184,7 +206,18 @@ const App: React.FC = () => {
                 tenant_id: tenantId
               };
               logSave('medications', med.id, tenantId, medDocData);
-              await setDoc(doc(db, 'medications', med.id), medDocData);
+              try {
+                console.log("TENTANDO SALVAR", {
+                  collectionName: "medications",
+                  documentId: med.id,
+                  userUid: tenantId,
+                  payload: medDocData
+                });
+                await setDoc(doc(db, 'medications', med.id), medDocData);
+              } catch (error: any) {
+                console.error("ERRO COMPLETO FIRESTORE", error);
+                alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
+              }
             }
           }
         }
@@ -222,7 +255,18 @@ const App: React.FC = () => {
                 tenant_id: tenantId
               };
               logSave('medication_logs', docId, tenantId, logDocData);
-              await setDoc(doc(db, 'medication_logs', docId), logDocData);
+              try {
+                console.log("TENTANDO SALVAR", {
+                  collectionName: "medication_logs",
+                  documentId: docId,
+                  userUid: tenantId,
+                  payload: logDocData
+                });
+                await setDoc(doc(db, 'medication_logs', docId), logDocData);
+              } catch (error: any) {
+                console.error("ERRO COMPLETO FIRESTORE", error);
+                alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
+              }
             }
           }
         }
@@ -258,7 +302,18 @@ const App: React.FC = () => {
                 tenant_id: tenantId
               };
               logSave('hotelStays', stay.id, tenantId, stayDocData);
-              await setDoc(doc(db, 'hotelStays', stay.id), stayDocData);
+              try {
+                console.log("TENTANDO SALVAR", {
+                  collectionName: "hotelStays",
+                  documentId: stay.id,
+                  userUid: tenantId,
+                  payload: stayDocData
+                });
+                await setDoc(doc(db, 'hotelStays', stay.id), stayDocData);
+              } catch (error: any) {
+                console.error("ERRO COMPLETO FIRESTORE", error);
+                alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
+              }
             }
           }
         }
@@ -354,10 +409,10 @@ const App: React.FC = () => {
       tenant_id: tenantId
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "checklists",
       documentId: docId,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: checklistDocData
     });
 
@@ -365,9 +420,9 @@ const App: React.FC = () => {
       try {
         logSave('checklists', docId, tenantId, checklistDocData);
         await setDoc(doc(db, 'checklists', docId), checklistDocData);
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         return;
       }
     }
@@ -433,18 +488,18 @@ const App: React.FC = () => {
             ...group,
             tenant_id: tenantId
           };
-          console.log("SALVANDO NO FIRESTORE", {
+          console.log("TENTANDO SALVAR", {
             collectionName: "groups",
             documentId: group.id,
-            tenant_id: tenantId,
+            userUid: tenantId,
             payload: groupDocData
           });
           logSave('groups', group.id, tenantId, groupDocData);
           await setDoc(doc(db, 'groups', group.id), groupDocData, { merge: true });
         }
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         return;
       }
     }
@@ -463,18 +518,18 @@ const App: React.FC = () => {
             ...group,
             tenant_id: tenantId
           };
-          console.log("SALVANDO NO FIRESTORE", {
+          console.log("TENTANDO SALVAR", {
             collectionName: "groups",
             documentId: group.id,
-            tenant_id: tenantId,
+            userUid: tenantId,
             payload: groupDocData
           });
           logSave('groups', group.id, tenantId, groupDocData);
           await setDoc(doc(db, 'groups', group.id), groupDocData);
         }
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         return;
       }
     }
@@ -492,17 +547,17 @@ const App: React.FC = () => {
           ...med,
           tenant_id: tenantId
         };
-        console.log("SALVANDO NO FIRESTORE", {
+        console.log("TENTANDO SALVAR", {
           collectionName: "medications",
           documentId: med.id,
-          tenant_id: tenantId,
+          userUid: tenantId,
           payload: medDocData
         });
         logSave('medications', med.id, tenantId, medDocData);
         await setDoc(doc(db, 'medications', med.id), medDocData);
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         return;
       }
     }
@@ -520,16 +575,17 @@ const App: React.FC = () => {
 
     if (isFirebaseConfigured && db) {
       try {
-        console.log("DELETANDO NO FIRESTORE", {
+        console.log("TENTANDO SALVAR (DELETAR)", {
           collectionName: "medications",
           documentId: id,
-          tenant_id: tenantId
+          userUid: tenantId,
+          payload: null
         });
         console.log(`Deletando medicação ${id} pelo tenant ${tenantId}`);
         await deleteDoc(doc(db, 'medications', id));
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         return;
       }
     }
@@ -555,10 +611,10 @@ const App: React.FC = () => {
       tenant_id: tenantId
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "medication_logs",
       documentId: docId,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: logDocData
     });
 
@@ -566,9 +622,9 @@ const App: React.FC = () => {
       try {
         logSave('medication_logs', docId, tenantId, logDocData);
         await setDoc(doc(db, 'medication_logs', docId), logDocData);
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         return;
       }
     }
@@ -590,10 +646,10 @@ const App: React.FC = () => {
       tenant_id: tenantId
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "hotelStays",
       documentId: stay.id,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: stayDocData
     });
 
@@ -601,9 +657,9 @@ const App: React.FC = () => {
       try {
         logSave('hotelStays', stay.id, tenantId, stayDocData);
         await setDoc(doc(db, 'hotelStays', stay.id), stayDocData);
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         return;
       }
     }
@@ -638,16 +694,17 @@ const App: React.FC = () => {
 
     if (isFirebaseConfigured && db) {
       try {
-        console.log("DELETANDO NO FIRESTORE", {
+        console.log("TENTANDO SALVAR (DELETAR)", {
           collectionName: "hotelStays",
           documentId: id,
-          tenant_id: tenantId
+          userUid: tenantId,
+          payload: null
         });
         console.log(`Deletando estadia de hotel ${id} pelo tenant ${tenantId}`);
         await deleteDoc(doc(db, 'hotelStays', id));
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         return;
       }
     }

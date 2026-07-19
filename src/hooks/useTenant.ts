@@ -185,8 +185,17 @@ export function useTenant() {
                 updatedAt: new Date().toISOString()
               };
 
+              console.log("TENTANDO SALVAR", {
+                collectionName: "tenants",
+                documentId: user.uid,
+                userUid: user.uid,
+                payload: initTenantData
+              });
               logSave('tenants', user.uid, user.uid, initTenantData);
-              setDoc(tenantRef, initTenantData).catch(err => console.error("Erro ao migrar tenant:", err));
+              setDoc(tenantRef, initTenantData).catch(error => {
+                console.error("ERRO COMPLETO FIRESTORE", error);
+                alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
+              });
             }
 
             setNome(fetchedNome);
@@ -313,10 +322,10 @@ export function useTenant() {
       updatedAt: new Date().toISOString()
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "tenants",
       documentId: tenantId,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: dadosParaSalvar
     });
 
@@ -326,9 +335,9 @@ export function useTenant() {
         const tenantRef = doc(db, 'tenants', tenantId);
         logSave('tenants', tenantId, tenantId, dadosParaSalvar);
         await setDoc(tenantRef, dadosParaSalvar, { merge: true });
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || "Erro desconhecido"));
         throw error;
       }
     }

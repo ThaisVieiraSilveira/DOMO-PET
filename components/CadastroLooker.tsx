@@ -527,10 +527,10 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
 
             console.log("Pet importado tenant_id:", petData.tenant_id);
 
-            console.log("SALVANDO NO FIRESTORE", {
+            console.log("TENTANDO SALVAR", {
               collectionName: "pets",
               documentId: pet.id,
-              tenant_id: tenantId,
+              userUid: tenantId,
               payload: petData
             });
 
@@ -545,10 +545,10 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
               atualizadoEm: serverTimestamp()
             };
 
-            console.log("SALVANDO NO FIRESTORE", {
+            console.log("TENTANDO SALVAR", {
               collectionName: "tutorAccessLinks",
               documentId: token,
-              tenant_id: tenantId,
+              userUid: tenantId,
               payload: linkPayload
             });
 
@@ -578,7 +578,8 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
             successCount++;
             details.push(`Pet ${pet.pet_nome} (${pet.id}) importado/atualizado com sucesso!`);
           } catch (error: any) {
-            console.error("ERRO FIRESTORE", error);
+            console.error("ERRO COMPLETO FIRESTORE", error);
+            alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
             console.log('Erro ao salvar pet:', pet.id, error);
             errCount++;
             details.push(`Erro ao importar pet ${pet.pet_nome || pet.id}: ${error instanceof Error ? error.message : String(error)}`);
@@ -752,10 +753,10 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
         tutorAccessUpdatedAt: serverTimestamp()
       };
 
-      console.log("SALVANDO NO FIRESTORE", {
+      console.log("TENTANDO SALVAR", {
         collectionName: "pets",
         documentId: pet.id,
-        tenant_id: user.uid,
+        userUid: user.uid,
         payload: petPayload
       });
 
@@ -771,10 +772,10 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
         atualizadoEm: serverTimestamp()
       };
 
-      console.log("SALVANDO NO FIRESTORE", {
+      console.log("TENTANDO SALVAR", {
         collectionName: "tutorAccessLinks",
         documentId: token,
-        tenant_id: user.uid,
+        userUid: user.uid,
         payload: linkPayload
       });
 
@@ -822,7 +823,8 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
       setTimeout(() => setTutorLinkMessage(null), 5000);
     } catch (err: any) {
       // 7. Se der erro, mostrar erro real na tela e no console
-      console.error("Erro ao salvar link do tutor:", err);
+      console.error("ERRO COMPLETO FIRESTORE", err);
+      alert((err.code || "Erro") + " - " + (err.message || String(err)));
       setTutorLinkError(`Erro ao salvar link do tutor: ${err.message || String(err)}`);
     }
   };
@@ -887,7 +889,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
     try {
       addLog("Passo 1/2: Tentando gravar documento 'pets/TESTE001'...");
       const petDocRef = doc(db, 'pets', 'TESTE001');
-      await setDoc(petDocRef, {
+      const petPayload = {
         id: "TESTE001",
         pet_nome: "Pet Teste",
         tutor_nome: "Tutor Teste",
@@ -896,17 +898,31 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
         tutorAccessToken: "teste-token",
         tutorAccessEnabled: true,
         criadoEm: serverTimestamp()
+      };
+      console.log("TENTANDO SALVAR", {
+        collectionName: "pets",
+        documentId: "TESTE001",
+        userUid: currentUser.uid,
+        payload: petPayload
       });
+      await setDoc(petDocRef, petPayload);
       addLog("✅ Documento 'pets/TESTE001' criado com sucesso!");
 
       addLog("Passo 2/2: Tentando gravar documento 'tutorAccessLinks/teste-token'...");
       const linkRef = doc(db, 'tutorAccessLinks', 'teste-token');
-      await setDoc(linkRef, {
+      const linkPayload = {
         petId: "TESTE001",
         crecheId: currentUser.uid,
         ativo: true,
         criadoEm: serverTimestamp()
+      };
+      console.log("TENTANDO SALVAR", {
+        collectionName: "tutorAccessLinks",
+        documentId: "teste-token",
+        userUid: currentUser.uid,
+        payload: linkPayload
       });
+      await setDoc(linkRef, linkPayload);
       addLog("✅ Documento 'tutorAccessLinks/teste-token' criado com sucesso!");
 
       addLog("🎉 Teste salvo com sucesso no Firestore.");
@@ -916,6 +932,8 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
         errorMessage: undefined
       } : null);
     } catch (err: any) {
+      console.error("ERRO COMPLETO FIRESTORE", err);
+      alert((err?.code || "Erro") + " - " + (err?.message || String(err)));
       const code = err.code || 'Desconhecido';
       const message = err.message || String(err);
       addLog(`❌ FALHA AO GRAVAR NO FIRESTORE!`);
@@ -975,9 +993,16 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
     if (isFirebaseConfigured && db && target.id) {
       try {
         const pendDocRef = doc(db, 'cadastros_pendentes', target.id);
+        console.log("TENTANDO SALVAR (DELETAR)", {
+          collectionName: "cadastros_pendentes",
+          documentId: target.id,
+          userUid: auth.currentUser?.uid,
+          payload: null
+        });
         await deleteDoc(pendDocRef);
-      } catch (err) {
-        console.error("Erro ao deletar pendente do Firestore:", err);
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
       }
     }
 
@@ -998,9 +1023,16 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
       if (isFirebaseConfigured && db && target.id) {
         try {
           const pendDocRef = doc(db, 'cadastros_pendentes', target.id);
+          console.log("TENTANDO SALVAR (DELETAR)", {
+            collectionName: "cadastros_pendentes",
+            documentId: target.id,
+            userUid: auth.currentUser?.uid,
+            payload: null
+          });
           await deleteDoc(pendDocRef);
-        } catch (err) {
-          console.error("Erro ao deletar pendente do Firestore:", err);
+        } catch (error: any) {
+          console.error("ERRO COMPLETO FIRESTORE", error);
+          alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         }
       }
     }
@@ -1019,9 +1051,16 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
     if (isFirebaseConfigured && db && updatedData.id) {
       try {
         const pendDocRef = doc(db, 'cadastros_pendentes', updatedData.id);
+        console.log("TENTANDO SALVAR", {
+          collectionName: "cadastros_pendentes",
+          documentId: updatedData.id,
+          userUid: auth.currentUser?.uid,
+          payload: updatedData
+        });
         await setDoc(pendDocRef, updatedData);
-      } catch (err) {
-        console.error("Erro ao atualizar pendente no Firestore:", err);
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
       }
     }
     

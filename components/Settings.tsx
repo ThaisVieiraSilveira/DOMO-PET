@@ -77,14 +77,24 @@ const Settings: React.FC<SettingsProps> = ({
       const testId = `diag_test_${Date.now()}`;
       const docRef = doc(db, 'firebase_tests', testId);
       
-      // 1. Measure write time
-      const startWrite = performance.now();
-      await setDoc(docRef, {
+      const payload = {
         status: 'online',
         timestamp: new Date().toISOString(),
         testBy: user?.email || 'anonymous_diagnostic',
-        device: navigator.userAgent
+        device: navigator.userAgent,
+        tenant_id: user?.uid || 'anonymous'
+      };
+
+      console.log("TENTANDO SALVAR", {
+        collectionName: "firebase_tests",
+        documentId: testId,
+        userUid: user?.uid,
+        payload
       });
+
+      // 1. Measure write time
+      const startWrite = performance.now();
+      await setDoc(docRef, payload);
       const endWrite = performance.now();
       const writeTime = Math.round(endWrite - startWrite);
 
@@ -114,7 +124,8 @@ const Settings: React.FC<SettingsProps> = ({
         details: `Gravação: ${writeTime}ms | Leitura: ${readTime}ms | Limpeza: ${deleteTime}ms. Total: ${writeTime + readTime + deleteTime}ms.`
       });
     } catch (error: any) {
-      console.error("Firebase diagnostic test error:", error);
+      console.error("ERRO COMPLETO FIRESTORE", error);
+      alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
       setTestStatus('error');
       setTestResult({
         message: 'Falha ao gravar ou ler dados no Firebase Firestore.',
@@ -317,19 +328,20 @@ const Settings: React.FC<SettingsProps> = ({
         const currentData = docSnap.exists() ? docSnap.data() : {};
         const payload = {
           ...currentData,
+          tenant_id: tenantId,
           communityGroupLink: communityGroupLink.trim(),
           updatedAt: new Date().toISOString()
         };
-        console.log("SALVANDO NO FIRESTORE", {
+        console.log("TENTANDO SALVAR", {
           collectionName: "tenants",
           documentId: tenantId,
-          tenant_id: tenantId,
+          userUid: tenantId,
           payload
         });
         await setDoc(tenantRef, payload, { merge: true });
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         return;
       }
     }

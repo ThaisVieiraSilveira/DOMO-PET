@@ -923,9 +923,16 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     if (isFirebaseConfigured && db) {
       try {
+        console.log("TENTANDO SALVAR", {
+          collectionName: "creches/{crecheId}/atividadesEmLote",
+          documentId: activityMasterId,
+          userUid: crecheId,
+          payload: masterData
+        });
         await setDoc(doc(db, 'creches', crecheId, 'atividadesEmLote', activityMasterId), masterData);
-      } catch (err) {
-        console.warn("Erro ao salvar atividade mestre no Firestore:", err);
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
       }
     }
 
@@ -959,7 +966,20 @@ const Dashboard: React.FC<DashboardProps> = ({
       try {
         // Save to project's equivalent timeline collection (pets/{petId}/timeline)
         if (isFirebaseConfigured && db) {
+          console.log("TENTANDO SALVAR", {
+            collectionName: "pets/{petId}/timeline",
+            documentId: eventId,
+            userUid: crecheId,
+            payload: eventData
+          });
           await setDoc(doc(db, 'pets', petId, 'timeline', eventId), eventData);
+          
+          console.log("TENTANDO SALVAR", {
+            collectionName: "creches/{crecheId}/pets/{petId}/timeline",
+            documentId: eventId,
+            userUid: crecheId,
+            payload: eventData
+          });
           // Also save under creches subcollection to fully satisfy the request schema
           await setDoc(doc(db, 'creches', crecheId, 'pets', petId, 'timeline', eventId), eventData);
           
@@ -976,6 +996,12 @@ const Dashboard: React.FC<DashboardProps> = ({
               tenant_id: crecheId,
               criadoEm: serverTimestamp()
             };
+            console.log("TENTANDO SALVAR", {
+              collectionName: "pets/{petId}/moments",
+              documentId: petMomentId,
+              userUid: crecheId,
+              payload: momentDoc
+            });
             await setDoc(doc(db, 'pets', petId, 'moments', petMomentId), momentDoc);
           }
         }
@@ -1013,8 +1039,10 @@ const Dashboard: React.FC<DashboardProps> = ({
         }
 
         successCount++;
-      } catch (err) {
-        console.error(`Erro ao salvar para o pet ${petName}:`, err);
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
+        console.error(`Erro ao salvar para o pet ${petName}:`, error);
         failures.push(petName);
       }
     }
@@ -1117,8 +1145,20 @@ const Dashboard: React.FC<DashboardProps> = ({
         };
 
         if (isFirebaseConfigured && db) {
-          // Save both collections
+          console.log("TENTANDO SALVAR", {
+            collectionName: "pets/{petId}/timeline",
+            documentId: eventId,
+            userUid: tenantId,
+            payload: timelineDoc
+          });
           await setDoc(doc(db, 'pets', petId, 'timeline', eventId), timelineDoc);
+          
+          console.log("TENTANDO SALVAR", {
+            collectionName: "pets/{petId}/moments",
+            documentId: petMomentId,
+            userUid: tenantId,
+            payload: momentDoc
+          });
           await setDoc(doc(db, 'pets', petId, 'moments', petMomentId), momentDoc);
         }
 
@@ -1158,9 +1198,10 @@ const Dashboard: React.FC<DashboardProps> = ({
       setMomentFile(null);
       setMomentFilePreview(null);
       setMomentLegenda('');
-    } catch (err) {
-      console.error('Erro ao salvar momento:', err);
-      alert('Erro ao salvar o momento. Verifique sua conexão.');
+    } catch (error: any) {
+      console.error("ERRO COMPLETO FIRESTORE", error);
+      alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
+      console.error('Erro ao salvar momento:', error);
     } finally {
       setSavingMoment(false);
     }
@@ -1211,9 +1252,16 @@ const Dashboard: React.FC<DashboardProps> = ({
     if (isFirebaseConfigured && db && target.id) {
       try {
         const pendDocRef = doc(db, 'cadastros_pendentes', target.id);
+        console.log("TENTANDO SALVAR (DELETAR)", {
+          collectionName: "cadastros_pendentes",
+          documentId: target.id,
+          userUid: auth.currentUser?.uid,
+          payload: null
+        });
         await deleteDoc(pendDocRef);
-      } catch (err) {
-        console.error("Erro ao deletar pendente do Firestore:", err);
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
       }
     }
 
@@ -1234,9 +1282,16 @@ const Dashboard: React.FC<DashboardProps> = ({
       if (isFirebaseConfigured && db && target.id) {
         try {
           const pendDocRef = doc(db, 'cadastros_pendentes', target.id);
+          console.log("TENTANDO SALVAR (DELETAR)", {
+            collectionName: "cadastros_pendentes",
+            documentId: target.id,
+            userUid: auth.currentUser?.uid,
+            payload: null
+          });
           await deleteDoc(pendDocRef);
-        } catch (err) {
-          console.error("Erro ao deletar pendente do Firestore:", err);
+        } catch (error: any) {
+          console.error("ERRO COMPLETO FIRESTORE", error);
+          alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         }
       }
     }
@@ -1255,9 +1310,16 @@ const Dashboard: React.FC<DashboardProps> = ({
     if (isFirebaseConfigured && db && updatedData.id) {
       try {
         const pendDocRef = doc(db, 'cadastros_pendentes', updatedData.id);
+        console.log("TENTANDO SALVAR", {
+          collectionName: "cadastros_pendentes",
+          documentId: updatedData.id,
+          userUid: auth.currentUser?.uid,
+          payload: updatedData
+        });
         await setDoc(pendDocRef, updatedData);
-      } catch (err) {
-        console.error("Erro ao atualizar pendente no Firestore:", err);
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
       }
     }
     

@@ -119,10 +119,10 @@ export function useRegistros() {
       criado_em: new Date().toISOString(),
     };
 
-    console.log("SALVANDO NO FIRESTORE", {
+    console.log("TENTANDO SALVAR", {
       collectionName: "registros",
       documentId: newId,
-      tenant_id: tenantId,
+      userUid: tenantId,
       payload: newRegistro
     });
 
@@ -132,9 +132,9 @@ export function useRegistros() {
         const docRef = doc(db, 'registros', newId);
         logSave('registros', newId, tenantId, newRegistro);
         await setDoc(docRef, newRegistro);
-      } catch (error) {
-        console.error("ERRO FIRESTORE", error);
-        alert("Erro ao salvar no Firebase. Verifique conexão e regras do Firestore.");
+      } catch (error: any) {
+        console.error("ERRO COMPLETO FIRESTORE", error);
+        alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }

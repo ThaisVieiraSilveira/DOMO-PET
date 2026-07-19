@@ -257,9 +257,16 @@ export const CadastroPublico: React.FC = () => {
       if (isFirebaseConfigured && db) {
         try {
           const pendDocRef = doc(db, 'cadastros_pendentes', cadastroId);
+          console.log("TENTANDO SALVAR", {
+            collectionName: "cadastros_pendentes",
+            documentId: cadastroId,
+            userUid: null,
+            payload: novoCadastro
+          });
           await setDoc(pendDocRef, novoCadastro);
-        } catch (fbErr) {
-          console.error('Erro ao salvar no Firestore cadastros_pendentes:', fbErr);
+        } catch (error: any) {
+          console.error("ERRO COMPLETO FIRESTORE", error);
+          alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         }
       }
 

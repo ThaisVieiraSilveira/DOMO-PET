@@ -88,22 +88,36 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
     try {
       // 3. Atualizar o documento do pet no Firestore
       const petDocRef = doc(db, 'pets', pet.id);
-      await setDoc(petDocRef, {
+      const petPayload = {
         tutorAccessToken: token,
         tutorAccessEnabled: true,
         tenant_id: user.uid,
         tutorAccessUpdatedAt: serverTimestamp()
-      }, { merge: true });
+      };
+      console.log("TENTANDO SALVAR", {
+        collectionName: "pets",
+        documentId: pet.id,
+        userUid: user.uid,
+        payload: petPayload
+      });
+      await setDoc(petDocRef, petPayload, { merge: true });
 
       // 4. Criar/atualizar tutorAccessLinks no Firestore
       const linkRef = doc(db, 'tutorAccessLinks', token);
-      await setDoc(linkRef, {
+      const linkPayload = {
         petId: pet.id,
         crecheId: user.uid,
         ativo: true,
         criadoEm: pet.tutorAccessCreatedAt || serverTimestamp(),
         atualizadoEm: serverTimestamp()
-      }, { merge: true });
+      };
+      console.log("TENTANDO SALVAR", {
+        collectionName: "tutorAccessLinks",
+        documentId: token,
+        userUid: user.uid,
+        payload: linkPayload
+      });
+      await setDoc(linkRef, linkPayload, { merge: true });
 
       // Local storage fallback
       try {
@@ -139,6 +153,8 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
 
       return token;
     } catch (error: any) {
+      console.error("ERRO COMPLETO FIRESTORE", error);
+      alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
       console.error("Erro ao salvar link do tutor:", error);
       throw error;
     }
@@ -205,17 +221,31 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
       
       // Update pet
       const petDocRef = doc(db, 'pets', pet.id);
-      await setDoc(petDocRef, {
+      const petPayload = {
         tutorAccessEnabled: false,
         tutorAccessUpdatedAt: serverTimestamp()
-      }, { merge: true });
+      };
+      console.log("TENTANDO SALVAR", {
+        collectionName: "pets",
+        documentId: pet.id,
+        userUid: user.uid,
+        payload: petPayload
+      });
+      await setDoc(petDocRef, petPayload, { merge: true });
 
       // Disable tutorAccessLinks
       const linkRef = doc(db, 'tutorAccessLinks', oldToken);
-      await setDoc(linkRef, {
+      const linkPayload = {
         ativo: false,
         atualizadoEm: serverTimestamp()
-      }, { merge: true });
+      };
+      console.log("TENTANDO SALVAR", {
+        collectionName: "tutorAccessLinks",
+        documentId: oldToken,
+        userUid: user.uid,
+        payload: linkPayload
+      });
+      await setDoc(linkRef, linkPayload, { merge: true });
 
       // Update local storage fallback
       try {
@@ -240,7 +270,8 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
       setTutorMessage('Link do tutor desativado com sucesso.');
       setTimeout(() => setTutorMessage(''), 4000);
     } catch (err: any) {
-      console.error(err);
+      console.error("ERRO COMPLETO FIRESTORE", err);
+      alert((err?.code || "Erro") + " - " + (err?.message || String(err)));
       setTutorError(`Erro ao desativar link: ${err.message || String(err)}`);
     }
   };
@@ -259,10 +290,17 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
         // Disable the old token
         try {
           const oldLinkRef = doc(db, 'tutorAccessLinks', oldToken);
-          await setDoc(oldLinkRef, {
+          const oldLinkPayload = {
             ativo: false,
             atualizadoEm: serverTimestamp()
-          }, { merge: true });
+          };
+          console.log("TENTANDO SALVAR", {
+            collectionName: "tutorAccessLinks",
+            documentId: oldToken,
+            userUid: user.uid,
+            payload: oldLinkPayload
+          });
+          await setDoc(oldLinkRef, oldLinkPayload, { merge: true });
         } catch (oldErr) {
           console.warn("Erro ao desativar token antigo no Firestore:", oldErr);
         }
@@ -272,22 +310,36 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
       
       // Update pet
       const petDocRef = doc(db, 'pets', pet.id);
-      await setDoc(petDocRef, {
+      const petPayload = {
         tutorAccessToken: newToken,
         tutorAccessEnabled: true,
         tenant_id: user.uid,
         tutorAccessUpdatedAt: serverTimestamp()
-      }, { merge: true });
+      };
+      console.log("TENTANDO SALVAR", {
+        collectionName: "pets",
+        documentId: pet.id,
+        userUid: user.uid,
+        payload: petPayload
+      });
+      await setDoc(petDocRef, petPayload, { merge: true });
 
       // Create tutorAccessLinks
       const linkRef = doc(db, 'tutorAccessLinks', newToken);
-      await setDoc(linkRef, {
+      const linkPayload = {
         petId: pet.id,
         crecheId: user.uid,
         ativo: true,
         criadoEm: serverTimestamp(),
         atualizadoEm: serverTimestamp()
-      }, { merge: true });
+      };
+      console.log("TENTANDO SALVAR", {
+        collectionName: "tutorAccessLinks",
+        documentId: newToken,
+        userUid: user.uid,
+        payload: linkPayload
+      });
+      await setDoc(linkRef, linkPayload, { merge: true });
 
       // Local storage fallback
       try {
@@ -325,7 +377,8 @@ const PetChecklist: React.FC<PetChecklistProps> = ({
       setTutorMessage('Novo link gerado e mensagem personalizada copiada! 🔄📋');
       setTimeout(() => setTutorMessage(''), 4000);
     } catch (err: any) {
-      console.error(err);
+      console.error("ERRO COMPLETO FIRESTORE", err);
+      alert((err?.code || "Erro") + " - " + (err?.message || String(err)));
       setTutorError(`Erro ao gerar novo link: ${err.message || String(err)}`);
     }
   };

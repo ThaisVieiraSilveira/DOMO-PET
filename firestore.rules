@@ -7,148 +7,140 @@ service cloud.firestore {
     }
 
     // Rules for White-label branding (tenants database)
-    match /tenants/{tenantId} {
-      // Publicly readable so the guardian portal renders with the customized theme or logo
-      allow read: if true;
-      // Writing (create/update/delete) is restricted strictly to authenticated user of that tenantId
-      allow write: if request.auth != null && request.auth.uid == tenantId;
+    match /tenants/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
     // Rules for Pets database
     match /pets/{petId} {
-      // Restrict write to the authenticated tenant owner of the pet
-      allow write: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
-      // Allow single document get publicly so that the public tutor profile works reliably,
-      // but restrict listing/queries to the authenticated tenant owner.
       allow get: if true;
-      allow list: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
+      allow list: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+    }
+
+    // Rules for subcollections of pet details: timeline
+    match /pets/{petId}/timeline/{id} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Rules for subcollections of pet details: moments
+    match /pets/{petId}/moments/{id} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Rules for subcollections of pet details: boletins
+    match /pets/{petId}/boletins/{id} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
     // Rules for public tutor access links
     match /tutorAccessLinks/{token} {
       allow get: if true;
-
-      allow create: if request.auth != null
-        && request.auth.uid == request.resource.data.crecheId;
-
-      allow update, delete: if request.auth != null
-        && request.auth.uid == resource.data.crecheId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.crecheId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.crecheId;
     }
 
-    // Rules for subcollections of pet details
-    match /pets/{petId}/timeline/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    // Rules for food and feeding logs/registros database
+    match /registros/{regId} {
+      allow read: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
     }
 
-    match /pets/{petId}/moments/{docId} {
+    // Rules for checklists
+    match /checklists/{checklistId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
     }
 
-    match /pets/{petId}/boletins/{docId} {
+    // Rules for groups
+    match /groups/{groupId} {
+      allow read: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+    }
+
+    // Rules for medications
+    match /medications/{medId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+    }
+
+    // Rules for medication_logs
+    match /medication_logs/{logId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+    }
+
+    // Rules for pending registrations submitted by public users
+    match /cadastros_pendentes/{id} {
+      allow create: if request.resource.data.tenant_id != null || request.resource.data.crecheId != null;
+      allow read, delete: if request.auth != null && (resource.data.tenant_id == request.auth.uid || resource.data.crecheId == request.auth.uid);
+      allow update: if request.auth != null && (resource.data.tenant_id == request.auth.uid || resource.data.crecheId == request.auth.uid) && (request.resource.data.tenant_id == request.auth.uid || request.resource.data.crecheId == request.auth.uid);
+    }
+
+    // Rules for hotelStays database
+    match /hotelStays/{stayId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+    }
+
+    // Rules for hotelRecords/{recordId}
+    match /hotelRecords/{recordId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+    }
+
+    // Rules for hotelReports/{reportId}
+    match /hotelReports/{reportId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+    }
+
+    // Rules for boletins database
+    match /boletins/{boletimId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
     }
 
     // Rules for creches collection and batch activities
     match /creches/{crecheId} {
       allow read, write: if request.auth != null && request.auth.uid == crecheId;
 
-      match /atividadesEmLote/{atividadeId} {
+      match /atividadesEmLote/{id} {
         allow read, write: if request.auth != null && request.auth.uid == crecheId;
       }
 
-      match /pets/{petId}/timeline/{eventId} {
+      match /pets/{petId}/timeline/{id} {
         allow read: if true;
         allow write: if request.auth != null && request.auth.uid == crecheId;
       }
     }
 
-    // Rules for food and feeding logs/registros database
-    match /registros/{regId} {
-      // Restrict read/write to the authenticated tenant owner of the log
-      allow read, write: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
-    }
-
-    // Rules for checklists
-    match /checklists/{checklistId} {
-      allow read: if true;
-      allow write: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
-    }
-
-    // Rules for medications
-    match /medications/{medId} {
-      allow read: if true;
-      allow write: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
-    }
-
-    // Rules for medication_logs
-    match /medication_logs/{logId} {
-      allow read: if true;
-      allow write: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
-    }
-
-    // Rules for groups
-    match /groups/{groupId} {
-      allow read, write: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
-    }
-
-    // Rules for pending registrations submitted by public users
-    match /cadastros_pendentes/{cadastroId} {
-      // Allow public creation (submitting form)
-      allow create: if true;
-      // Allow only the target tenant to read, update or delete
-      allow read, update, delete: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
-    }
-
-    // Rules for hotelStays, hotelRecords, and hotelReports database
-    match /hotelStays/{stayId} {
-      allow read: if true;
-      allow write: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
-    }
-
-    match /hotelRecords/{recordId} {
-      allow read: if true;
-      allow write: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
-    }
-
-    match /hotelReports/{reportId} {
-      allow read: if true;
-      allow write: if request.auth != null && (
-        (resource == null && request.resource.data.tenant_id == request.auth.uid) ||
-        (resource != null && resource.data.tenant_id == request.auth.uid)
-      );
+    // Rules for Firestore Connection Test
+    match /firebase_tests/{testId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
