@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Pet, PetFriendship } from '../types';
+import { compressImage } from '../utils/image';
 import { 
   Sparkles, Plus, Trash2, History, ChevronLeft, Calendar, Brain, AlertTriangle, Play, HelpCircle, User
 } from 'lucide-react';
@@ -222,37 +223,33 @@ const UnicoEdit: React.FC<UnicoEditProps> = ({ pets, onSave, isEmbedded = false 
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
 
     const file = e.dataTransfer.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        alert("A imagem deve ter no máximo 2MB.");
-        return;
+      try {
+        const compressed = await compressImage(file, 400, 400, 0.75);
+        setFormData(prev => prev ? { ...prev, foto: compressed.base64 } : null);
+      } catch (err) {
+        console.error("Erro ao comprimir imagem:", err);
+        alert("Erro ao processar imagem.");
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => prev ? { ...prev, foto: reader.result as string } : null);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        alert("A imagem deve ter no máximo 2MB.");
-        return;
+      try {
+        const compressed = await compressImage(file, 400, 400, 0.75);
+        setFormData(prev => prev ? { ...prev, foto: compressed.base64 } : null);
+      } catch (err) {
+        console.error("Erro ao comprimir imagem:", err);
+        alert("Erro ao processar imagem.");
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => prev ? { ...prev, foto: reader.result as string } : null);
-      };
-      reader.readAsDataURL(file);
     }
   };
 

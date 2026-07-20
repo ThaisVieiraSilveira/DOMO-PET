@@ -1,146 +1,160 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Safety Net: Catch-All Default Deny
-    match /{document=**} {
-      allow read, write: if false;
+    
+    // Helper Functions
+    function loggedIn() { return request.auth != null; }
+    
+    // DECISÃO DEFINITIVA DE SEGURANÇA: O bypass 'uid == tenantId' é intencional e definitivo.
+    // Ele impede que o proprietário raiz da conta (Owner principal do Tenant) seja acidentalmente
+    // desativado por outros administradores ou falhas em coleções de membros secundários.
+    // Risco: O owner principal não pode ser desativado via coleção de membros.
+    // Mitigação: O cancelamento ou suspensão da conta do Tenant é feito desativando ou excluindo 
+    // o próprio documento pai '/tenants/{tenantId}', o que revoga imediatamente o acesso geral.
+    
+    // Check if user is a member of the tenant with a valid role and is active
+    function isMember(tenantId) {
+      return loggedIn() && 
+        (request.auth.uid == tenantId || 
+         (exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.active == true));
+    }
+    
+    // Check if user is the tenant owner or admin specifically and is active
+    function isOwnerOrAdmin(tenantId) {
+      return loggedIn() && 
+        (request.auth.uid == tenantId || 
+         (exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.active == true &&
+          get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role in ['owner', 'admin']));
     }
 
-    // Rules for White-label branding (tenants database)
-    match /tenants/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    match /{document=**} { allow read, write: if false; }
+
+    // Tenant configuration access
+    match /tenants/{tenantId} {
+      allow read: if loggedIn() && isMember(tenantId);
+      allow write: if loggedIn() && isOwnerOrAdmin(tenantId);
+      
+      // Members subcollection
+      match /members/{uid} {
+        allow read: if loggedIn() && isMember(tenantId);
+        allow write: if loggedIn() && isOwnerOrAdmin(tenantId);
+      }
     }
 
-    // Rules for Pets database
+    // Pets collection
     match /pets/{petId} {
-      allow get: if true;
-      allow list: if request.auth != null && resource.data.tenant_id == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow get: if loggedIn() && isMember(resource.data.tenant_id);
+      allow list: if loggedIn() && isMember(resource.data.tenant_id);
+      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(request.resource.data.tenant_id) && (resource.data.tenant_id == request.auth.uid || !('tenant_id' in resource.data));
+      allow delete: if loggedIn() && isOwnerOrAdmin(resource.data.tenant_id);
     }
 
-    // Rules for subcollections of pet details: timeline
+    // Subcollections of pets (timeline, moments, boletins) are protected!
+    // No more public read ("allow read: if true")! Tutors access them solely via the secure backend API.
     match /pets/{petId}/timeline/{id} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read, write: if loggedIn() && isMember(get(/databases/$(database)/documents/pets/$(petId)).data.tenant_id);
     }
-
-    // Rules for subcollections of pet details: moments
     match /pets/{petId}/moments/{id} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read, write: if loggedIn() && isMember(get(/databases/$(database)/documents/pets/$(petId)).data.tenant_id);
     }
-
-    // Rules for subcollections of pet details: boletins
     match /pets/{petId}/boletins/{id} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read, write: if loggedIn() && isMember(get(/databases/$(database)/documents/pets/$(petId)).data.tenant_id);
     }
 
-    // Rules for public tutor access links
-    match /tutorAccessLinks/{token} {
-      allow get: if true;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.crecheId;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.crecheId;
+    // Secure tutorAccessLinks are completely blocked from client-side direct SDK reads and writes
+    match /tutorAccessLinks/{hash} {
+      allow read, write: if false; // All operations must go through Admin SDK on the server
     }
 
-    // Rules for food and feeding logs/registros database
+    // tenantAuditLogs is completely secure
+    match /tenantAuditLogs/{logId} {
+      allow read, write: if false; // Only backend admin SDK can query and write audit logs
+    }
+
+    // Staging IP Telemetry collection (accessible ONLY to administrators via Cloud Console / Admin SDK)
+    match /staging_ip_telemetry/{id} {
+      allow read, write: if false; // Block client-side SDK completely. Only readable via Admin SDK.
+    }
+
+    // Registros
     match /registros/{regId} {
-      allow read: if request.auth != null && resource.data.tenant_id == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow read, delete: if loggedIn() && isMember(resource.data.tenant_id);
+      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(resource.data.tenant_id) && isMember(request.resource.data.tenant_id);
     }
 
-    // Rules for checklists
+    // Checklists
     match /checklists/{checklistId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow read: if loggedIn() && isMember(resource.data.tenant_id);
+      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(resource.data.tenant_id) && isMember(request.resource.data.tenant_id);
+      allow delete: if loggedIn() && isOwnerOrAdmin(resource.data.tenant_id);
     }
 
-    // Rules for groups
+    // Groups
     match /groups/{groupId} {
-      allow read: if request.auth != null && resource.data.tenant_id == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow read, delete: if loggedIn() && isMember(resource.data.tenant_id);
+      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(resource.data.tenant_id) && isMember(request.resource.data.tenant_id);
     }
 
-    // Rules for medications
+    // Medications
     match /medications/{medId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow read: if loggedIn() && isMember(resource.data.tenant_id);
+      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(resource.data.tenant_id) && isMember(request.resource.data.tenant_id);
+      allow delete: if loggedIn() && isOwnerOrAdmin(resource.data.tenant_id);
     }
 
-    // Rules for medication_logs
+    // Medication logs
     match /medication_logs/{logId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow read: if loggedIn() && isMember(resource.data.tenant_id);
+      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(resource.data.tenant_id) && isMember(request.resource.data.tenant_id);
+      allow delete: if loggedIn() && isOwnerOrAdmin(resource.data.tenant_id);
     }
 
-    // Rules for pending registrations submitted by public users
+    // Public pending registrations
     match /cadastros_pendentes/{id} {
-      allow create: if request.resource.data.tenant_id != null || request.resource.data.crecheId != null;
-      allow read, delete: if request.auth != null && (resource.data.tenant_id == request.auth.uid || resource.data.crecheId == request.auth.uid);
-      allow update: if request.auth != null && (resource.data.tenant_id == request.auth.uid || resource.data.crecheId == request.auth.uid) && (request.resource.data.tenant_id == request.auth.uid || request.resource.data.crecheId == request.auth.uid);
+      // Allows anyone to create/submit (public registration form), but validation is enforced
+      allow create: if request.resource.data.tenant_id != null;
+      allow read, delete: if loggedIn() && isMember(resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(resource.data.tenant_id) && isMember(request.resource.data.tenant_id);
     }
 
-    // Rules for hotelStays database
+    // Hotel Stays
     match /hotelStays/{stayId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow read: if loggedIn() && isMember(resource.data.tenant_id);
+      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(resource.data.tenant_id) && isMember(request.resource.data.tenant_id);
+      allow delete: if loggedIn() && isOwnerOrAdmin(resource.data.tenant_id);
     }
 
-    // Rules for hotelRecords/{recordId}
+    // Hotel Records
     match /hotelRecords/{recordId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow read: if loggedIn() && isMember(resource.data.tenant_id);
+      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(resource.data.tenant_id) && isMember(request.resource.data.tenant_id);
+      allow delete: if loggedIn() && isOwnerOrAdmin(resource.data.tenant_id);
     }
 
-    // Rules for hotelReports/{reportId}
+    // Hotel Reports
     match /hotelReports/{reportId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
+      allow read: if loggedIn() && isMember(resource.data.tenant_id);
+      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(resource.data.tenant_id) && isMember(request.resource.data.tenant_id);
+      allow delete: if loggedIn() && isOwnerOrAdmin(resource.data.tenant_id);
     }
 
-    // Rules for boletins database
+    // Boletins
     match /boletins/{boletimId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.tenant_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.tenant_id == request.auth.uid && request.resource.data.tenant_id == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.tenant_id == request.auth.uid;
-    }
-
-    // Rules for creches collection and batch activities
-    match /creches/{crecheId} {
-      allow read, write: if request.auth != null && request.auth.uid == crecheId;
-
-      match /atividadesEmLote/{id} {
-        allow read, write: if request.auth != null && request.auth.uid == crecheId;
-      }
-
-      match /pets/{petId}/timeline/{id} {
-        allow read: if true;
-        allow write: if request.auth != null && request.auth.uid == crecheId;
-      }
-    }
-
-    // Rules for Firestore Connection Test
-    match /firebase_tests/{testId} {
-      allow read, write: if request.auth != null;
+      allow read: if loggedIn() && isMember(resource.data.tenant_id);
+      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
+      allow update: if loggedIn() && isMember(resource.data.tenant_id) && isMember(request.resource.data.tenant_id);
+      allow delete: if loggedIn() && isOwnerOrAdmin(resource.data.tenant_id);
     }
   }
 }

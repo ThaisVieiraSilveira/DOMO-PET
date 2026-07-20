@@ -7,13 +7,16 @@
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "tsx server/tests/runTests.ts",
+    "test:security": "tsx server/tests/runTests.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "firebase": "^12.14.0",
+    "firebase-admin": "^14.2.0",
     "google-auth-library": "^10.5.0",
     "googleapis": "^171.4.0",
     "lucide-react": "^1.17.0",
@@ -22,9 +25,13 @@
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.0",
     "tsx": "^4.21.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "esbuild": "^0.28.1",

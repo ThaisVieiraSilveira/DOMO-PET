@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth, storage, isFirebaseConfigured } from '../firebase';
 import { HotelStay, HotelRecord, HotelReport } from '../../types';
 import { ensureAuthenticated, logSave, logLoad } from '../../utils/firestore';
+import { compressImage } from '../../utils/image';
 
 const LOCAL_STORAGE_KEYS = {
   stays: 'domo_hotel_stays_v2',
@@ -143,8 +144,21 @@ export function useHotel() {
   // Upload file helper
   const uploadPhoto = async (file: File, folderName: string = 'hotel_items'): Promise<string> => {
     const user = auth.currentUser;
+    
+    // Compress image first!
+    let compressedFile = file;
+    let compressedBase64 = '';
+    try {
+      const result = await compressImage(file, 1024, 1024, 0.75);
+      compressedFile = result.file;
+      compressedBase64 = result.base64;
+    } catch (compressErr) {
+      console.warn("Could not compress image:", compressErr);
+    }
+
     if (!isFirebaseConfigured || !storage || !user) {
       // Fallback: Convert to base64 string
+      if (compressedBase64) return compressedBase64;
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
@@ -154,12 +168,13 @@ export function useHotel() {
     }
 
     try {
-      const fileRef = ref(storage, `${folderName}/${user.uid}/${Date.now()}_${file.name}`);
-      await uploadBytes(fileRef, file);
+      const fileRef = ref(storage, `${folderName}/${user.uid}/${Date.now()}_${compressedFile.name}`);
+      await uploadBytes(fileRef, compressedFile);
       return await getDownloadURL(fileRef);
     } catch (err) {
       console.error("Erro no upload do arquivo:", err);
       // Fallback to base64
+      if (compressedBase64) return compressedBase64;
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
@@ -278,6 +293,38 @@ export function useHotel() {
       try {
         logSave('hotelRecords', newId, tenantId, newRecord);
         await setDoc(doc(db, 'hotelRecords', newId), newRecord);
+
+        // SYNC HOTEL RECORD TO TUTOR ACCESS LINK SUMMARY
+        if (newRecord.visibleToTutor) {
+          try {
+            const { updateTutorAccessLinkSummary } = await import('../utils/tutorSummary');
+            await updateTutorAccessLinkSummary(newRecord.petId, {
+              timelineEvent: {
+                id: newId,
+                horario: newRecord.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                tipo: newRecord.type === 'feeding' ? 'alimentacao' :
+                      newRecord.type === 'medication' ? 'medicacao' :
+                      newRecord.type === 'photo' ? 'fotos' : 'atividades',
+                texto: newRecord.notes || '',
+                imagemUrl: newRecord.photoUrl || undefined,
+                responsavel: newRecord.responsible,
+                visivelTutor: true
+              },
+              ...(newRecord.type === 'photo' && newRecord.photoUrl ? {
+                momentItem: {
+                  id: newId,
+                  url: newRecord.photoUrl,
+                  categoria: 'hospedagem',
+                  legenda: newRecord.notes || '',
+                  visivelTutor: true,
+                  criadoEm: newRecord.createdAt
+                }
+              } : {})
+            });
+          } catch (syncErr) {
+            console.warn("Could not sync hotel record to tutorAccessLinks:", syncErr);
+          }
+        }
       } catch (error: any) {
         console.error("ERRO COMPLETO FIRESTORE", error);
         alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
@@ -352,6 +399,25 @@ export function useHotel() {
       try {
         logSave('hotelReports', newId, tenantId, newReport);
         await setDoc(doc(db, 'hotelReports', newId), newReport);
+
+        // SYNC HOTEL REPORT TO TUTOR ACCESS LINK SUMMARY
+        try {
+          const { updateTutorAccessLinkSummary } = await import('../utils/tutorSummary');
+          await updateTutorAccessLinkSummary(newReport.petId, {
+            bulletinItem: {
+              id: newId,
+              tipo: 'hotel',
+              titulo: `Boletim de Hospedagem - ${newReport.petName}`,
+              periodoInicio: newReport.createdAt,
+              periodoFim: newReport.createdAt,
+              resumo: newReport.reportText,
+              status: 'arquivado',
+              criadoEm: newReport.createdAt
+            }
+          });
+        } catch (syncErr) {
+          console.warn("Could not sync hotel bulletin to tutorAccessLinks:", syncErr);
+        }
       } catch (error: any) {
         console.error("ERRO COMPLETO FIRESTORE", error);
         alert((error?.code || "Erro") + " - " + (error?.message || String(error)));

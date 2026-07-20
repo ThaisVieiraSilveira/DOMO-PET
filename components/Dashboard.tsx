@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Pet, ChecklistEntry, PetGroup, Medication, MedicationLog, HotelStay } from '../types';
 import { useTenant } from '../src/hooks/useTenant';
 import { useHotel } from '../src/hooks/useHotel';
+import { compressImage } from '../utils/image';
 import { collection, query, where, onSnapshot, doc, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth, storage, isFirebaseConfigured } from '../src/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -1004,6 +1005,38 @@ const Dashboard: React.FC<DashboardProps> = ({
             });
             await setDoc(doc(db, 'pets', petId, 'moments', petMomentId), momentDoc);
           }
+
+          // SYNC BATCH ACTIVITY EVENT TO TUTOR ACCESS LINK
+          if (batchActivityVisivelTutor) {
+            try {
+              const { updateTutorAccessLinkSummary } = await import('../src/utils/tutorSummary');
+              await updateTutorAccessLinkSummary(petId, {
+                statusHoje: 'Na creche hoje 🐾',
+                timelineEvent: {
+                  id: eventId,
+                  horario: batchActivityTime,
+                  tipo: 'atividades',
+                  texto: eventData.texto,
+                  atividadeTipo: batchActivityType,
+                  responsavel: batchActivityResponsavel.trim(),
+                  observacao: batchActivityObservation.trim(),
+                  visivelTutor: true
+                },
+                ...(uploadedImageUrl ? {
+                  momentItem: {
+                    id: `MOM_ACT_${Date.now()}_${i}`,
+                    url: uploadedImageUrl,
+                    categoria: 'hoje',
+                    legenda: batchActivityObservation.trim() || `${batchActivityType} do dia`,
+                    visivelTutor: true,
+                    criadoEm: new Date().toISOString()
+                  }
+                } : {})
+              });
+            } catch (syncErr) {
+              console.warn("Could not sync batch activity to tutorAccessLinks:", syncErr);
+            }
+          }
         }
 
         // Save to localStorage for robust offline fallback & synchronicity
@@ -1160,6 +1193,35 @@ const Dashboard: React.FC<DashboardProps> = ({
             payload: momentDoc
           });
           await setDoc(doc(db, 'pets', petId, 'moments', petMomentId), momentDoc);
+
+          // SYNC INDIVIDUAL MOMENT EVENT TO TUTOR ACCESS LINK
+          if (momentVisivelTutor) {
+            try {
+              const { updateTutorAccessLinkSummary } = await import('../src/utils/tutorSummary');
+              await updateTutorAccessLinkSummary(petId, {
+                statusHoje: 'Na creche hoje 🐾',
+                timelineEvent: {
+                  id: eventId,
+                  horario: momentTime,
+                  tipo: 'fotos',
+                  texto: momentLegenda.trim(),
+                  imagemUrl,
+                  responsavel: momentResponsavel.trim(),
+                  visivelTutor: true
+                },
+                momentItem: {
+                  id: petMomentId,
+                  url: imagemUrl,
+                  categoria: 'hoje',
+                  legenda: momentLegenda.trim(),
+                  visivelTutor: true,
+                  criadoEm: new Date().toISOString()
+                }
+              });
+            } catch (syncErr) {
+              console.warn("Could not sync individual moment to tutorAccessLinks:", syncErr);
+            }
+          }
         }
 
         // Local storage fallback
@@ -2893,7 +2955,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
                       const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -2901,15 +2963,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                         alert('Apenas imagens nos formatos JPG, PNG ou WEBP são permitidas.');
                         return;
                       }
-                      const maxSize = 5 * 1024 * 1024; // 5MB
-                      if (file.size > maxSize) {
-                        alert('O tamanho máximo da imagem é de 5MB.');
-                        return;
+                      try {
+                        const compressed = await compressImage(file, 1024, 1024, 0.75);
+                        setBatchActivityFile(compressed.file);
+                        setBatchActivityFilePreview(compressed.base64);
+                      } catch (err) {
+                        console.error("Erro ao comprimir imagem:", err);
+                        alert("Erro ao processar imagem.");
                       }
-                      setBatchActivityFile(file);
-                      const reader = new FileReader();
-                      reader.onloadend = () => setBatchActivityFilePreview(reader.result as string);
-                      reader.readAsDataURL(file);
                     }}
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                   />
@@ -3096,7 +3157,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
                       const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -3104,15 +3165,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                         alert('Apenas imagens nos formatos JPG, PNG ou WEBP são permitidas.');
                         return;
                       }
-                      const maxSize = 5 * 1024 * 1024; // 5MB
-                      if (file.size > maxSize) {
-                        alert('O tamanho máximo da imagem é de 5MB.');
-                        return;
+                      try {
+                        const compressed = await compressImage(file, 1024, 1024, 0.75);
+                        setMomentFile(compressed.file);
+                        setMomentFilePreview(compressed.base64);
+                      } catch (err) {
+                        console.error("Erro ao comprimir imagem:", err);
+                        alert("Erro ao processar imagem.");
                       }
-                      setMomentFile(file);
-                      const reader = new FileReader();
-                      reader.onloadend = () => setMomentFilePreview(reader.result as string);
-                      reader.readAsDataURL(file);
                     }}
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                   />

@@ -420,6 +420,24 @@ const App: React.FC = () => {
       try {
         logSave('checklists', docId, tenantId, checklistDocData);
         await setDoc(doc(db, 'checklists', docId), checklistDocData);
+
+        // SYNC CHECKLIST STATUS TO TUTOR ACCESS LINK SUMMARY
+        try {
+          const { updateTutorAccessLinkSummary } = await import('./src/utils/tutorSummary');
+          const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          await updateTutorAccessLinkSummary(entry.petId, {
+            statusHoje: entry.status || 'Na creche hoje 🐾',
+            timelineEvent: {
+              id: `EVT_FEED_${Date.now()}`,
+              horario: timeStr,
+              tipo: 'alimentacao',
+              texto: `Alimentação atualizada: ${entry.comeu}. ${entry.observacoes || ''}`,
+              visivelTutor: true
+            }
+          });
+        } catch (syncErr) {
+          console.warn("Could not sync checklist status to tutorAccessLinks:", syncErr);
+        }
       } catch (error: any) {
         console.error("ERRO COMPLETO FIRESTORE", error);
         alert((error?.code || "Erro") + " - " + (error?.message || String(error)));

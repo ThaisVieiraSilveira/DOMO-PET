@@ -71,40 +71,63 @@ const PerfilPetPublico: React.FC = () => {
         let petData: Pet | null = null;
         let crecheId = 'local-user';
 
-        // Direct fetch check using query parameter petId (Highly robust fallback)
-        const queryPetId = searchParams.get('petId');
-        if (queryPetId && isFirebaseConfigured && db) {
-          try {
-            const petRef = doc(db, 'pets', queryPetId);
-            const petSnap = await getDoc(petRef);
-            if (petSnap.exists()) {
-              const currentPetData = { ...petSnap.data(), id: petSnap.id } as Pet;
-              // Check if token matches and access is enabled
-              if (currentPetData.tutorAccessToken === token && currentPetData.tutorAccessEnabled !== false) {
-                petData = currentPetData;
-                linkData = {
-                  petId: queryPetId,
-                  crecheId: currentPetData.tenant_id || 'local-user',
-                  ativo: true
-                };
-                crecheId = currentPetData.tenant_id || 'local-user';
-              }
-            }
-          } catch (petErr) {
-            console.warn("Direct pet fetch using queryPetId failed:", petErr);
-          }
-        }
+        let dbTimeline: TimelineEvent[] = [];
+        let dbMoments: MomentItem[] = [];
+        let dbBulletins: BulletinItem[] = [];
+        let crecheNome = 'Creche Domo Pet';
+        let crecheCor = '#085041'; // default Floresta Real color
+        let crecheTelefone = '11999999999';
 
-        // 1. Resolve Token via tutorAccessLinks
-        if (!linkData && isFirebaseConfigured && db) {
+        // 1. Resolve everything via a SINGLE query to tutorAccessLinks/{token}
+        if (isFirebaseConfigured && db) {
           try {
             const linkRef = doc(db, 'tutorAccessLinks', token);
             const linkSnap = await getDoc(linkRef);
             if (linkSnap.exists()) {
               const data = linkSnap.data();
-              if (data && data.ativo) {
+              // Check active status on tutorAccessLinks
+              if (data && (data.active === true || data.ativo === true)) {
                 linkData = data;
-                crecheId = data.crecheId;
+                crecheId = data.crecheId || 'local-user';
+                crecheNome = data.crecheNome || crecheNome;
+                crecheCor = data.crecheCor || crecheCor;
+                
+                // Reconstruct petData from public document fields
+                petData = {
+                  id: data.petId,
+                  pet_nome: data.petNome || 'Pet',
+                  foto: data.petFotoUrl || '',
+                  tutor_nome: data.tutorNome || '',
+                  telefone: data.cuidadosImportantes?.tutorWhatsapp || data.tutorWhatsapp || '-',
+                  possui_alergia: data.cuidadosImportantes?.possui_alergia || 'Não',
+                  alimentos_proibidos: data.cuidadosImportantes?.alimentos_proibidos || '',
+                  tipo_alimentacao: data.cuidadosImportantes?.tipo_alimentacao || '',
+                  quantidade_aproximada: data.cuidadosImportantes?.quantidade_aproximada || '',
+                  possui_doenca: data.cuidadosImportantes?.possui_doenca || 'Não',
+                  doenca_qual: data.cuidadosImportantes?.doenca_qual || '',
+                  dia_semana: data.diasFrequenta || '-',
+                  tutorAccessToken: token,
+                  tutorAccessEnabled: true
+                } as any as Pet;
+
+                crecheTelefone = data.cuidadosImportantes?.crecheTelefone || '11999999999';
+
+                if (data.cuidadosImportantes?.hotelStayActive) {
+                  setActiveHotelStay(data.cuidadosImportantes.hotelStayActive);
+                }
+                if (data.cuidadosImportantes?.medicacoesAtivas) {
+                  setActiveMedications(data.cuidadosImportantes.medicacoesAtivas);
+                }
+                
+                if (data.timelinePublica) {
+                  dbTimeline = data.timelinePublica;
+                }
+                if (data.momentosPublicos) {
+                  dbMoments = data.momentosPublicos;
+                }
+                if (data.boletinsPublicos) {
+                  dbBulletins = data.boletinsPublicos;
+                }
               }
             }
           } catch (fireErr) {
@@ -120,6 +143,8 @@ const PerfilPetPublico: React.FC = () => {
           if (localLink && localLink.ativo) {
             linkData = localLink;
             crecheId = localLink.crecheId;
+            crecheNome = localLink.crecheNome || crecheNome;
+            crecheCor = localLink.crecheCor || crecheCor;
           }
         }
 
@@ -129,20 +154,7 @@ const PerfilPetPublico: React.FC = () => {
           return;
         }
 
-        // 2. Fetch Pet Data (if not already fetched by query parameter check)
-        if (!petData && isFirebaseConfigured && db) {
-          try {
-            const petRef = doc(db, 'pets', linkData.petId);
-            const petSnap = await getDoc(petRef);
-            if (petSnap.exists()) {
-              petData = { ...petSnap.data(), id: petSnap.id } as Pet;
-            }
-          } catch (fireErr) {
-            console.warn("Firestore pets read failed, falling back to local storage:", fireErr);
-          }
-        }
-
-        // Fallback to localStorage for Pet
+        // Reconstruct Pet Data for offline/local storage if Firebase fetch did not populate it
         if (!petData) {
           const cachedPets = JSON.parse(localStorage.getItem('domo_master_pets') || '[]');
           const localPet = cachedPets.find((p: any) => p.id === linkData.petId);
@@ -166,25 +178,7 @@ const PerfilPetPublico: React.FC = () => {
 
         setPet(petData);
 
-        // 3. Creche / Tenant Info (mock/derived from user/tenant settings)
-        let crecheNome = 'Creche Domo Pet';
-        let crecheCor = '#085041'; // default Floresta Real color
-        const crecheTelefone = petData.telefone !== '-' ? petData.telefone : '11999999999';
-
-        if (isFirebaseConfigured && db && crecheId) {
-          try {
-            const tenantRef = doc(db, 'tenants', crecheId);
-            const tenantSnap = await getDoc(tenantRef);
-            if (tenantSnap.exists()) {
-              const tData = tenantSnap.data();
-              crecheNome = tData.nome || crecheNome;
-              crecheCor = tData.cor || crecheCor;
-            }
-          } catch (tErr) {
-            console.warn("Could not load tenant branding from Firestore:", tErr);
-          }
-        }
-
+        // Creche / Tenant Info setup
         if (crecheId === 'local-user') {
           crecheNome = localStorage.getItem('domo_nome') || 'Creche Domo Pet';
           crecheCor = localStorage.getItem('domo_cor') || '#085041';
@@ -196,239 +190,33 @@ const PerfilPetPublico: React.FC = () => {
           cor: crecheCor
         });
 
-        // 4. Fetch Stays & Medications (from Firestore with LocalStorage fallback)
-        let activeStay: HotelStay | null = null;
-        if (isFirebaseConfigured && db) {
-          try {
-            const staysRef = collection(db, 'hotelStays');
-            const qStays = query(staysRef, where('petId', '==', petData.id), where('status', '==', 'ativa'));
-            const staysSnap = await getDocs(qStays);
-            if (!staysSnap.empty) {
-              const stayDoc = staysSnap.docs[0];
-              activeStay = { ...stayDoc.data(), id: stayDoc.id } as HotelStay;
-              setActiveHotelStay(activeStay);
-            }
-          } catch (stayErr) {
-            console.warn("Firestore active stay fetch failed, using fallback:", stayErr);
-          }
-        }
-
-        if (!activeStay) {
+        // Fallbacks for Active Stay & Medications if offline or not loaded from public doc
+        if (!activeHotelStay) {
           const staysStr = localStorage.getItem('domo_hotel_stays_v2') || localStorage.getItem('domo_hotel_stays') || '[]';
           const stays: HotelStay[] = JSON.parse(staysStr);
           const petStay = stays.find(s => s.petId === petData!.id && (s.status === 'ativa' || s.active));
           if (petStay) {
-            activeStay = petStay;
             setActiveHotelStay(petStay);
           }
         }
 
-        let petMeds: Medication[] = [];
-        let todayCheck: ChecklistEntry | null = null;
-
-        if (isFirebaseConfigured && db) {
-          try {
-            const medsRef = collection(db, 'medications');
-            const qMeds = query(medsRef, where('petId', '==', petData.id), where('active', '==', true));
-            const medsSnap = await getDocs(qMeds);
-            medsSnap.forEach(docSnap => {
-              petMeds.push({ ...docSnap.data(), id: docSnap.id } as Medication);
-            });
-            if (petMeds.length > 0) {
-              setActiveMedications(petMeds);
-            }
-          } catch (medsErr) {
-            console.warn("Firestore medications fetch failed:", medsErr);
-          }
-
-          try {
-            const checklistsRef = collection(db, 'checklists');
-            const qChecks = query(checklistsRef, where('petId', '==', petData.id));
-            const checksSnap = await getDocs(qChecks);
-            const fetchedChecklists: ChecklistEntry[] = [];
-            checksSnap.forEach(docSnap => {
-              fetchedChecklists.push(docSnap.data() as ChecklistEntry);
-            });
-            const todayStr = new Date().toISOString().split('T')[0];
-            const check = fetchedChecklists.find(c => c.date === todayStr);
-            if (check) {
-              todayCheck = check;
-              setTodayChecklist(check);
-            }
-          } catch (checksErr) {
-            console.warn("Firestore checklists fetch failed:", checksErr);
-          }
-        }
-
-        if (petMeds.length === 0) {
+        if (activeMedications.length === 0) {
           const medsStr = localStorage.getItem('domo_medications') || '[]';
           const meds: Medication[] = JSON.parse(medsStr);
-          petMeds = meds.filter(m => m.petId === petData!.id && m.active);
+          const petMeds = meds.filter(m => m.petId === petData!.id && m.active);
           setActiveMedications(petMeds);
         }
 
-        if (!todayCheck) {
-          const todayStr = new Date().toISOString().split('T')[0];
-          const checksStr = localStorage.getItem('domo_checklists') || '[]';
-          const checklists: ChecklistEntry[] = JSON.parse(checksStr);
-          todayCheck = checklists.find(c => c.petId === petData!.id && c.date === todayStr) || null;
-          if (todayCheck) {
-            setTodayChecklist(todayCheck);
-          }
+        let todayCheck: ChecklistEntry | null = null;
+        const todayStr = new Date().toISOString().split('T')[0];
+        const checksStr = localStorage.getItem('domo_checklists') || '[]';
+        const checklists: ChecklistEntry[] = JSON.parse(checksStr);
+        todayCheck = checklists.find(c => c.petId === petData!.id && c.date === todayStr) || null;
+        if (todayCheck) {
+          setTodayChecklist(todayCheck);
         }
 
-        // 6. Fetch Timeline, Moments, and Bulletins
-        let dbTimeline: TimelineEvent[] = [];
-        let dbMoments: MomentItem[] = [];
-        let dbBulletins: BulletinItem[] = [];
-
-        if (isFirebaseConfigured && db) {
-          try {
-            // Load Records from hotelRecords
-            try {
-              const recordsRef = collection(db, 'hotelRecords');
-              const qRecords = query(recordsRef, where('petId', '==', petData.id), where('visibleToTutor', '==', true));
-              const recordsSnap = await getDocs(qRecords);
-              
-              recordsSnap.forEach(docSnap => {
-                const data = docSnap.data();
-                dbTimeline.push({
-                  id: docSnap.id,
-                  horario: data.time || data.horario || '00:00',
-                  tipo: data.type === 'feeding' ? 'alimentacao' :
-                        data.type === 'medication' ? 'medicacao' :
-                        data.type === 'photo' ? 'fotos' : 'atividades',
-                  texto: data.notes || data.texto || '',
-                  imagemUrl: data.photoUrl || data.imagemUrl || undefined,
-                  responsavel: data.responsible || data.responsavel,
-                  visivelTutor: true
-                });
-
-                if ((data.type === 'photo' || data.tipo === 'fotos') && (data.photoUrl || data.imagemUrl)) {
-                  dbMoments.push({
-                    id: docSnap.id,
-                    url: data.photoUrl || data.imagemUrl || '',
-                    categoria: 'hospedagem',
-                    legenda: data.notes || data.texto || '',
-                    visivelTutor: true,
-                    criadoEm: data.createdAt || data.criadoEm || new Date().toISOString()
-                  });
-                }
-              });
-            } catch (err) {
-              console.warn("Could not fetch hotelRecords:", err);
-            }
-
-            // Load Reports from hotelReports
-            try {
-              const reportsRef = collection(db, 'hotelReports');
-              const qReports = query(reportsRef, where('petId', '==', petData.id));
-              const reportsSnap = await getDocs(qReports);
-              reportsSnap.forEach(docSnap => {
-                const data = docSnap.data();
-                dbBulletins.push({
-                  id: docSnap.id,
-                  tipo: 'hotel',
-                  titulo: `Boletim de Hospedagem - ${petData!.pet_nome}`,
-                  periodoInicio: data.createdAt || new Date().toISOString(),
-                  periodoFim: data.createdAt || new Date().toISOString(),
-                  resumo: data.reportText || data.notes || '',
-                  status: 'arquivado',
-                  criadoEm: data.createdAt || new Date().toISOString()
-                });
-              });
-            } catch (err) {
-              console.warn("Could not fetch hotelReports:", err);
-            }
-
-            // Load direct timeline subcollection
-            try {
-              const timelineSnap = await getDocs(collection(db, 'pets', petData.id, 'timeline'));
-              timelineSnap.forEach(docSnap => {
-                const data = docSnap.data();
-                dbTimeline.push({
-                  id: docSnap.id,
-                  horario: data.horario || data.time || '00:00',
-                  tipo: data.tipo || 'atividades',
-                  texto: data.texto || data.notes || '',
-                  imagemUrl: data.imagemUrl || data.photoUrl || undefined,
-                  responsavel: data.responsavel || data.responsible,
-                  visivelTutor: data.visivelTutor !== false
-                });
-              });
-            } catch (err) {
-              console.warn("Could not fetch pets/timeline:", err);
-            }
-
-            // Load direct moments subcollection
-            try {
-              const momentsSnap = await getDocs(collection(db, 'pets', petData.id, 'moments'));
-              momentsSnap.forEach(docSnap => {
-                const data = docSnap.data();
-                dbMoments.push({
-                  id: docSnap.id,
-                  url: data.url || data.imagemUrl || data.photoUrl || '',
-                  categoria: data.categoria || 'hoje',
-                  legenda: data.legenda || data.texto || data.notes || '',
-                  visivelTutor: data.visivelTutor !== false,
-                  criadoEm: data.criadoEm || data.createdAt || new Date().toISOString()
-                });
-              });
-            } catch (err) {
-              console.warn("Could not fetch pets/moments:", err);
-            }
-
-            // Load direct bulletins subcollection
-            try {
-              const bulletinsSnap = await getDocs(collection(db, 'pets', petData.id, 'boletins'));
-              bulletinsSnap.forEach(docSnap => {
-                const data = docSnap.data();
-                dbBulletins.push({
-                  id: docSnap.id,
-                  tipo: data.tipo || 'creche_mensal',
-                  titulo: data.titulo || '',
-                  periodoInicio: data.periodoInicio || '',
-                  periodoFim: data.periodoFim || '',
-                  resumo: data.resumo || '',
-                  status: data.status || 'Finalizado',
-                  criadoEm: data.criadoEm || data.createdAt || new Date().toISOString()
-                });
-              });
-            } catch (err) {
-              console.warn("Could not fetch pets/boletins:", err);
-            }
-
-            // De-duplicate lists by ID and filter visivelTutor === true
-            const uniqueTimelineMap = new Map<string, TimelineEvent>();
-            dbTimeline.forEach(event => {
-              if (event.visivelTutor) {
-                uniqueTimelineMap.set(event.id, event);
-              }
-            });
-            dbTimeline = Array.from(uniqueTimelineMap.values());
-            // Sort by horario descending
-            dbTimeline.sort((a, b) => b.horario.localeCompare(a.horario));
-
-            const uniqueMomentsMap = new Map<string, MomentItem>();
-            dbMoments.forEach(m => {
-              if (m.visivelTutor) {
-                uniqueMomentsMap.set(m.id, m);
-              }
-            });
-            dbMoments = Array.from(uniqueMomentsMap.values());
-
-            const uniqueBulletinsMap = new Map<string, BulletinItem>();
-            dbBulletins.forEach(b => {
-              uniqueBulletinsMap.set(b.id, b);
-            });
-            dbBulletins = Array.from(uniqueBulletinsMap.values());
-
-          } catch (e) {
-            console.log("Erro geral ao processar coleções do Firestore para o tutor:", e);
-          }
-        }
-
-        // If Firestore subcollections are empty, we check if there are localStorage fallbacks or provide beautiful, high-fidelity mock data!
+        // Fallback for Timeline
         if (dbTimeline.length === 0) {
           const localTimelineStr = localStorage.getItem(`domo_timeline_${petData.id}`);
           if (localTimelineStr) {
@@ -437,7 +225,6 @@ const PerfilPetPublico: React.FC = () => {
               visivelTutor: ev.visivelTutor !== false
             }));
           } else if (todayCheck) {
-            // Dynamically generate beautiful timeline events based on today's real checklist!
             dbTimeline = [
               {
                 id: 't1',
@@ -465,6 +252,7 @@ const PerfilPetPublico: React.FC = () => {
         }
         setTimeline(dbTimeline);
 
+        // Fallback for Moments
         if (dbMoments.length === 0) {
           const localMomentsStr = localStorage.getItem(`domo_moments_${petData.id}`);
           if (localMomentsStr) {
@@ -473,7 +261,6 @@ const PerfilPetPublico: React.FC = () => {
               visivelTutor: m.visivelTutor !== false
             }));
           } else {
-            // Beautiful fallback images if pet has foto to make it look active
             dbMoments = petData.foto ? [
               { id: 'm1', url: petData.foto, categoria: 'hoje', legenda: 'Aproveitando o dia ensolarado!', criadoEm: new Date().toISOString(), visivelTutor: true },
               { id: 'm2', url: petData.foto, categoria: 'semana', legenda: 'Hora do cochilo pós-brincadeira', criadoEm: new Date().toISOString(), visivelTutor: true },
@@ -482,6 +269,7 @@ const PerfilPetPublico: React.FC = () => {
         }
         setMoments(dbMoments);
 
+        // Fallback for Bulletins
         if (dbBulletins.length === 0) {
           const localBulletinsStr = localStorage.getItem(`domo_bulletins_${petData.id}`);
           if (localBulletinsStr) {

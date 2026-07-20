@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Pet } from '../types';
+import { compressImage } from '../utils/image';
 
 interface CadastroProps {
   pets: Pet[];
@@ -107,37 +108,33 @@ const Cadastro: React.FC<CadastroProps> = ({ pets, onSave, onDeletePet }) => {
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        alert("A imagem deve ter no máximo 2MB.");
-        return;
+      try {
+        const compressed = await compressImage(file, 400, 400, 0.75);
+        setFormData(prev => prev ? { ...prev, foto: compressed.base64 } : null);
+      } catch (err) {
+        console.error("Erro ao comprimir imagem:", err);
+        alert("Erro ao processar imagem.");
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => prev ? { ...prev, foto: reader.result as string } : null);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        alert("A imagem deve ter no máximo 2MB.");
-        return;
+      try {
+        const compressed = await compressImage(file, 400, 400, 0.75);
+        setFormData(prev => prev ? { ...prev, foto: compressed.base64 } : null);
+      } catch (err) {
+        console.error("Erro ao comprimir imagem:", err);
+        alert("Erro ao processar imagem.");
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => prev ? { ...prev, foto: reader.result as string } : null);
-      };
-      reader.readAsDataURL(file);
     }
   };
 

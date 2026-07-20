@@ -4,16 +4,74 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 
+// Import secure modular dependencies
+import tutorLinksRouter from "./server/routes/tutorLinks";
+import publicTutorProfileRouter from "./server/routes/publicTutorProfile";
+import pendingRegistrationRouter from "./server/routes/pendingRegistration";
+import { stagingIpTelemetryMiddleware } from "./server/security/stagingTelemetry";
+
 dotenv.config();
+
+// Critical environment validation for production
+if (process.env.NODE_ENV === "production") {
+  if (!process.env.AUTHORIZED_STORAGE_BUCKET) {
+    console.error("ERRO CRÍTICO DE CONFIGURAÇÃO: A variável de ambiente AUTHORIZED_STORAGE_BUCKET é obrigatória em produção!");
+    process.exit(1);
+  }
+  if (!process.env.RATE_LIMIT_SALT_SECRET) {
+    console.error("ERRO CRÍTICO DE CONFIGURAÇÃO: A variável de ambiente RATE_LIMIT_SALT_SECRET é obrigatória em produção!");
+    process.exit(1);
+  }
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(cors());
-  app.use(express.json());
+  // Configure Express to trust the upstream proxy (Cloud Run / GFE) securely based on environment
+  const trustProxySetting = process.env.TRUST_PROXY_SETTINGS;
+  if (trustProxySetting === "true") {
+    app.set("trust proxy", true);
+  } else if (trustProxySetting === "false") {
+    app.set("trust proxy", false);
+  } else if (trustProxySetting && !isNaN(Number(trustProxySetting))) {
+    app.set("trust proxy", Number(trustProxySetting));
+  } else if (trustProxySetting) {
+    app.set("trust proxy", trustProxySetting);
+  } else {
+    // Safe non-trusting default
+    app.set("trust proxy", false);
+  }
 
-  // API Route to save to Google Sheets
+  app.use(cors());
+  app.use(express.json({ limit: "50kb" }));
+
+  // Protected Staging IP Telemetry (Only active if ENABLE_STAGING_IP_TELEMETRY === "true" and NOT prod)
+  app.use(stagingIpTelemetryMiddleware);
+
+  // Feature Flag gating for new secure tutor links architecture
+  const ENABLE_SECURE_TUTOR_LINKS = process.env.ENABLE_SECURE_TUTOR_LINKS === "true";
+
+  // Public pending pre-registrations (always open)
+  app.use("/api/public/pending-registration", pendingRegistrationRouter);
+
+  // Gated secure new endpoints
+  if (ENABLE_SECURE_TUTOR_LINKS) {
+    app.use("/api/tutor-link", tutorLinksRouter);
+    app.use("/api/public", publicTutorProfileRouter);
+  } else {
+    // Graceful fallback showing controlled maintenance/gated responses
+    const gatedResponse = (req: express.Request, res: express.Response) => {
+      res.status(503).json({
+        error: "Feature Gated",
+        message: "O novo mecanismo seguro de perfis públicos está temporariamente desativado por flag de infraestrutura.",
+      });
+    };
+    app.use("/api/tutor-link", gatedResponse);
+    app.use("/api/public/tutor-profile", gatedResponse);
+  }
+
+  // API Route to save to Google Sheets (legacy / looker report appending)
   app.post("/api/save-pet", async (req, res) => {
     try {
       const pet = req.body;
