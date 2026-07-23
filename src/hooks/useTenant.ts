@@ -4,10 +4,12 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, auth, storage, isFirebaseConfigured } from '../firebase';
 import { ensureAuthenticated, logSave, logLoad } from '../../utils/firestore';
+import { resolveTenantIdForUser } from '../utils/tenantResolver';
 
 const LOCAL_STORAGE_KEYS = {
   nome: 'domo_nome',
   cor: 'domo_cor',
+  corSecundaria: 'domo_cor_secundaria',
   logo: 'domo_logo',
   slogan: 'domo_slogan',
   slug: 'domo_slug',
@@ -17,6 +19,7 @@ const LOCAL_STORAGE_KEYS = {
 const DEFAULT_VALUES = {
   nome: 'Domo',
   cor: '#2d512e',
+  corSecundaria: '#0ea5e9',
   logo: '/logo.svg',
   slogan: 'Gestão canina de ponta a ponta',
   slug: 'domo',
@@ -27,11 +30,11 @@ function generateSlug(text: string): string {
   return text
     .toString()
     .toLowerCase()
-    .normalize('NFD') // decompose accented characters
-    .replace(/[\u0300-\u036f]/g, '') // remove accent marks
-    .replace(/[^\w\s\-]+/g, '') // remove other special chars
-    .replace(/\s+/g, '-') // spaces to dashes
-    .replace(/\-+/g, '-') // multiple dashes to single
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s\-]+/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/\-+/g, '-')
     .trim();
 }
 
@@ -59,6 +62,9 @@ export function useTenant() {
     if (storedNome === 'Bichinhos peludos') return '#2d512e';
     return storedCor || DEFAULT_VALUES.cor;
   });
+  const [corSecundaria, setCorSecundaria] = useState(() => {
+    return localStorage.getItem(LOCAL_STORAGE_KEYS.corSecundaria) || DEFAULT_VALUES.corSecundaria;
+  });
   const [logo, setLogo] = useState(() => {
     const storedNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome);
     const storedLogo = localStorage.getItem(LOCAL_STORAGE_KEYS.logo);
@@ -84,12 +90,16 @@ export function useTenant() {
     return storedEmail || DEFAULT_VALUES.email;
   });
   const [loading, setLoading] = useState(true);
+  const [savingStatus, setSavingStatus] = useState<'idle' | 'uploading' | 'saving' | 'success' | 'error'>('idle');
+  const [savingProgress, setSavingProgress] = useState<number>(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Sync state when branding gets updated from outside
   useEffect(() => {
     const handleBrandingChanged = () => {
       setNome(localStorage.getItem(LOCAL_STORAGE_KEYS.nome) || DEFAULT_VALUES.nome);
       setCor(localStorage.getItem(LOCAL_STORAGE_KEYS.cor) || DEFAULT_VALUES.cor);
+      setCorSecundaria(localStorage.getItem(LOCAL_STORAGE_KEYS.corSecundaria) || DEFAULT_VALUES.corSecundaria);
       setLogo(localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo);
       setSlogan(localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan);
       setSlug(localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug);
@@ -112,6 +122,7 @@ export function useTenant() {
         // Fallback to localStorage (or defaults)
         let localNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome) || DEFAULT_VALUES.nome;
         let localCor = localStorage.getItem(LOCAL_STORAGE_KEYS.cor) || DEFAULT_VALUES.cor;
+        let localCorSec = localStorage.getItem(LOCAL_STORAGE_KEYS.corSecundaria) || DEFAULT_VALUES.corSecundaria;
         let localLogo = localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo;
         let localSlogan = localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan;
         let localSlug = localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug;
@@ -120,6 +131,7 @@ export function useTenant() {
         if (localNome === 'Bichinhos peludos') {
           localNome = 'Domo';
           localCor = '#2d512e';
+          localCorSec = '#0ea5e9';
           localLogo = '/logo.svg';
           localSlogan = 'Gestão canina de ponta a ponta';
           localSlug = 'domo';
@@ -127,6 +139,7 @@ export function useTenant() {
 
           localStorage.setItem(LOCAL_STORAGE_KEYS.nome, localNome);
           localStorage.setItem(LOCAL_STORAGE_KEYS.cor, localCor);
+          localStorage.setItem(LOCAL_STORAGE_KEYS.corSecundaria, localCorSec);
           localStorage.setItem(LOCAL_STORAGE_KEYS.logo, localLogo);
           localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, localSlogan);
           localStorage.setItem(LOCAL_STORAGE_KEYS.slug, localSlug);
@@ -135,6 +148,7 @@ export function useTenant() {
 
         setNome(localNome);
         setCor(localCor);
+        setCorSecundaria(localCorSec);
         setLogo(localLogo);
         setSlogan(localSlogan);
         setSlug(localSlug);
@@ -144,62 +158,25 @@ export function useTenant() {
       }
 
       try {
-        const tenantRef = doc(db, 'tenants', user.uid);
+        const tenantId = await resolveTenantIdForUser(user.uid);
+        const tenantRef = doc(db, 'tenants', tenantId);
         const docSnap = await getDoc(tenantRef);
 
         if (active) {
-          logLoad('tenants', user.uid, docSnap.exists() ? 1 : 0);
+          logLoad('tenants', tenantId, docSnap.exists() ? 1 : 0);
           if (docSnap.exists()) {
             const data = docSnap.data();
             let fetchedNome = data.nome || data.nomeCreche || DEFAULT_VALUES.nome;
-            let fetchedCor = data.cor || data.corPrincipal || data.cor_primaria || DEFAULT_VALUES.cor;
-            let fetchedLogo = data.logo || data.logoUrl || data.logo_url || DEFAULT_VALUES.logo;
+            let fetchedCor = data.cor_primaria || data.corPrincipal || data.cor || DEFAULT_VALUES.cor;
+            let fetchedCorSec = data.cor_secundaria || data.corSecundaria || DEFAULT_VALUES.corSecundaria;
+            let fetchedLogo = data.logo_url || data.logoUrl || data.logo || DEFAULT_VALUES.logo;
             let fetchedSlogan = data.slogan || DEFAULT_VALUES.slogan;
             let fetchedSlug = data.slug || generateSlug(fetchedNome);
             let fetchedEmail = data.email || data.emailCreche || data.email_creche || DEFAULT_VALUES.email;
 
-            if (fetchedNome === 'Bichinhos peludos') {
-              fetchedNome = 'Domo';
-              fetchedCor = '#2d512e';
-              fetchedLogo = '/logo.svg';
-              fetchedSlogan = 'Gestão canina de ponta a ponta';
-              fetchedSlug = 'domo';
-              fetchedEmail = '';
-
-              const initTenantData = {
-                nome: fetchedNome,
-                cor: fetchedCor,
-                logo: fetchedLogo,
-                slogan: fetchedSlogan,
-                slug: fetchedSlug,
-                email: fetchedEmail,
-                tenant_id: user.uid,
-                nomeCreche: fetchedNome,
-                logoUrl: fetchedLogo,
-                logo_url: fetchedLogo,
-                corPrincipal: fetchedCor,
-                cor_primaria: fetchedCor,
-                emailCreche: fetchedEmail,
-                email_creche: fetchedEmail,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-              };
-
-              console.log("TENTANDO SALVAR", {
-                collectionName: "tenants",
-                documentId: user.uid,
-                userUid: user.uid,
-                payload: initTenantData
-              });
-              logSave('tenants', user.uid, user.uid, initTenantData);
-              setDoc(tenantRef, initTenantData).catch(error => {
-                console.error("ERRO COMPLETO FIRESTORE", error);
-                alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
-              });
-            }
-
             setNome(fetchedNome);
             setCor(fetchedCor);
+            setCorSecundaria(fetchedCorSec);
             setLogo(fetchedLogo);
             setSlogan(fetchedSlogan);
             setSlug(fetchedSlug);
@@ -208,6 +185,7 @@ export function useTenant() {
             // Also keep localStorage updated in sync with cloud
             localStorage.setItem(LOCAL_STORAGE_KEYS.nome, fetchedNome);
             localStorage.setItem(LOCAL_STORAGE_KEYS.cor, fetchedCor);
+            localStorage.setItem(LOCAL_STORAGE_KEYS.corSecundaria, fetchedCorSec);
             localStorage.setItem(LOCAL_STORAGE_KEYS.logo, fetchedLogo);
             localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, fetchedSlogan);
             localStorage.setItem(LOCAL_STORAGE_KEYS.slug, fetchedSlug);
@@ -216,29 +194,15 @@ export function useTenant() {
             // Document doesn't exist yet, load local storage settings
             let localNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome) || DEFAULT_VALUES.nome;
             let localCor = localStorage.getItem(LOCAL_STORAGE_KEYS.cor) || DEFAULT_VALUES.cor;
+            let localCorSec = localStorage.getItem(LOCAL_STORAGE_KEYS.corSecundaria) || DEFAULT_VALUES.corSecundaria;
             let localLogo = localStorage.getItem(LOCAL_STORAGE_KEYS.logo) || DEFAULT_VALUES.logo;
             let localSlogan = localStorage.getItem(LOCAL_STORAGE_KEYS.slogan) || DEFAULT_VALUES.slogan;
             let localSlug = localStorage.getItem(LOCAL_STORAGE_KEYS.slug) || DEFAULT_VALUES.slug;
             let localEmail = localStorage.getItem(LOCAL_STORAGE_KEYS.email) || DEFAULT_VALUES.email;
 
-            if (localNome === 'Bichinhos peludos') {
-              localNome = 'Domo';
-              localCor = '#2d512e';
-              localLogo = '/logo.svg';
-              localSlogan = 'Gestão canina de ponta a ponta';
-              localSlug = 'domo';
-              localEmail = '';
-
-              localStorage.setItem(LOCAL_STORAGE_KEYS.nome, localNome);
-              localStorage.setItem(LOCAL_STORAGE_KEYS.cor, localCor);
-              localStorage.setItem(LOCAL_STORAGE_KEYS.logo, localLogo);
-              localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, localSlogan);
-              localStorage.setItem(LOCAL_STORAGE_KEYS.slug, localSlug);
-              localStorage.setItem(LOCAL_STORAGE_KEYS.email, localEmail);
-            }
-
             setNome(localNome);
             setCor(localCor);
+            setCorSecundaria(localCorSec);
             setLogo(localLogo);
             setSlogan(localSlogan);
             setSlug(localSlug);
@@ -246,7 +210,6 @@ export function useTenant() {
           }
         }
       } catch (error: any) {
-        // Handle offline / connection errors silently/gracefully as they are expected
         if (error?.message?.includes('offline') || error?.code === 'unavailable') {
           console.log("Firestore tenant load: offline fallback active.");
         } else {
@@ -265,60 +228,109 @@ export function useTenant() {
     };
   }, []);
 
-  const salvar = async (novosDados: { nome: string; cor: string; logo?: string; slogan?: string; email?: string }) => {
-    // Block saving if not logged in
-    const tenantId = ensureAuthenticated();
+  const salvar = async (novosDados: {
+    nome: string;
+    cor: string;
+    corSecundaria?: string;
+    logo?: string;
+    logoFile?: File | null;
+    slogan?: string;
+    email?: string;
+  }) => {
+    setSavingStatus('uploading');
+    setSavingProgress(10);
+    setErrorMessage(null);
+
+    const userUid = ensureAuthenticated();
+    const tenantId = await resolveTenantIdForUser(userUid);
     const finalSlug = generateSlug(novosDados.nome);
 
-    // Fetch existing doc to preserve createdAt
-    let createdAt = new Date().toISOString();
-    if (isFirebaseConfigured && db) {
-      try {
-        const tenantRef = doc(db, 'tenants', tenantId);
-        const docSnap = await getDoc(tenantRef);
-        if (docSnap.exists()) {
-          const currentData = docSnap.data();
-          if (currentData.createdAt) {
-            createdAt = currentData.createdAt;
-          }
-        }
-      } catch (err) {
-        console.warn("Could not fetch existing tenant data for createdAt:", err);
-      }
-    }
+    let finalLogoUrl = novosDados.logo || logo || '';
 
-    // Handle robust PNG logo upload to Firebase Storage if configured and it's a Base64 string
-    let finalLogoUrl = novosDados.logo || '';
-    if (finalLogoUrl.startsWith('data:')) {
-      if (isFirebaseConfigured && db) {
+    // If a raw File object was passed for logo upload
+    if (novosDados.logoFile) {
+      const file = novosDados.logoFile;
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setSavingStatus('error');
+        const err = 'Formato de imagem inválido. Aceitos apenas PNG, JPG ou WebP.';
+        setErrorMessage(err);
+        alert(err);
+        throw new Error(err);
+      }
+
+      if (file.size > 2 * 1024 * 1024) {
+        setSavingStatus('error');
+        const err = 'O logotipo excede o tamanho máximo permitido de 2 MB.';
+        setErrorMessage(err);
+        alert(err);
+        throw new Error(err);
+      }
+
+      if (isFirebaseConfigured && db && storage) {
         try {
+          setSavingProgress(30);
+          const ext = file.name.split('.').pop() || 'png';
+          const storageRef = ref(storage, `logos/${tenantId}/logo.${ext}`);
+          await uploadBytes(storageRef, file);
+          setSavingProgress(60);
+          finalLogoUrl = await getDownloadURL(storageRef);
+        } catch (storageErr: any) {
+          console.error("Erro ao fazer upload do logo para o Firebase Storage:", storageErr);
+          setSavingStatus('error');
+          const err = `Falha ao salvar logo no Storage: ${storageErr.message || storageErr}`;
+          setErrorMessage(err);
+          alert(err);
+          throw new Error(err);
+        }
+      }
+    } else if (finalLogoUrl.startsWith('data:')) {
+      // Base64 upload to storage if passed as base64 string
+      if (isFirebaseConfigured && db && storage) {
+        try {
+          setSavingProgress(30);
           const blob = base64ToBlob(finalLogoUrl);
+          if (blob.size > 2 * 1024 * 1024) {
+            const err = 'A imagem excede o tamanho máximo de 2 MB.';
+            setSavingStatus('error');
+            setErrorMessage(err);
+            alert(err);
+            throw new Error(err);
+          }
           const storageRef = ref(storage, `logos/${tenantId}/logo.png`);
           await uploadBytes(storageRef, blob);
+          setSavingProgress(60);
           finalLogoUrl = await getDownloadURL(storageRef);
-        } catch (storageErr) {
-          console.error("Erro ao fazer upload do logo para o Firebase Storage:", storageErr);
+        } catch (storageErr: any) {
+          console.error("Erro ao converter e enviar logo em Base64:", storageErr);
         }
       }
     }
 
+    setSavingStatus('saving');
+    setSavingProgress(80);
+
+    const corSec = novosDados.corSecundaria || corSecundaria || DEFAULT_VALUES.corSecundaria;
+
     const dadosParaSalvar = {
-      nome: novosDados.nome,
-      cor: novosDados.cor,
-      logo: finalLogoUrl,
-      slogan: novosDados.slogan || '',
-      slug: finalSlug,
-      email: novosDados.email || '',
-      // Naming conventions and fallback compatibility requested by the user
       tenant_id: tenantId,
-      nomeCreche: novosDados.nome,
-      logoUrl: finalLogoUrl,
-      logo_url: finalLogoUrl,
-      corPrincipal: novosDados.cor,
+      nome: novosDados.nome.trim(),
       cor_primaria: novosDados.cor,
-      emailCreche: novosDados.email || '',
-      email_creche: novosDados.email || '',
-      createdAt,
+      cor_secundaria: corSec,
+      logo_url: finalLogoUrl,
+      slogan: novosDados.slogan ? novosDados.slogan.trim() : '',
+      slug: finalSlug,
+      email: novosDados.email ? novosDados.email.trim() : '',
+
+      // Backwards/compatibility properties
+      cor: novosDados.cor,
+      corPrincipal: novosDados.cor,
+      corSecundaria: corSec,
+      logo: finalLogoUrl,
+      logoUrl: finalLogoUrl,
+      nomeCreche: novosDados.nome.trim(),
+      emailCreche: novosDados.email ? novosDados.email.trim() : '',
+      email_creche: novosDados.email ? novosDados.email.trim() : '',
       updatedAt: new Date().toISOString()
     };
 
@@ -329,7 +341,6 @@ export function useTenant() {
       payload: dadosParaSalvar
     });
 
-    // 1. Gravar no Firestore se estiver logado e configurado FIRST (Pessimistic UI)
     if (isFirebaseConfigured && db) {
       try {
         const tenantRef = doc(db, 'tenants', tenantId);
@@ -337,33 +348,56 @@ export function useTenant() {
         await setDoc(tenantRef, dadosParaSalvar, { merge: true });
       } catch (error: any) {
         console.error("ERRO COMPLETO FIRESTORE", error);
+        setSavingStatus('error');
+        setErrorMessage(error?.message || 'Erro ao salvar no Firestore');
         alert((error?.code || "Erro") + " - " + (error?.message || "Erro desconhecido"));
         throw error;
       }
     }
 
-    // 2. Only upon success, save in localStorage
+    // Save locally
     localStorage.setItem(LOCAL_STORAGE_KEYS.nome, dadosParaSalvar.nome);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.cor, dadosParaSalvar.cor);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.logo, dadosParaSalvar.logo);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.cor, dadosParaSalvar.cor_primaria);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.corSecundaria, dadosParaSalvar.cor_secundaria);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.logo, dadosParaSalvar.logo_url);
     localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, dadosParaSalvar.slogan);
     localStorage.setItem(LOCAL_STORAGE_KEYS.slug, dadosParaSalvar.slug);
     localStorage.setItem(LOCAL_STORAGE_KEYS.email, dadosParaSalvar.email);
 
-    // 3. Atualizar estados locais
+    // Update React states
     setNome(dadosParaSalvar.nome);
-    setCor(dadosParaSalvar.cor);
-    setLogo(dadosParaSalvar.logo);
+    setCor(dadosParaSalvar.cor_primaria);
+    setCorSecundaria(dadosParaSalvar.cor_secundaria);
+    setLogo(dadosParaSalvar.logo_url);
     setSlogan(dadosParaSalvar.slogan);
     setSlug(dadosParaSalvar.slug);
     setEmail(dadosParaSalvar.email);
 
-    // 4. Disparar evento para componentes ativos se atualizarem
+    setSavingProgress(100);
+    setSavingStatus('success');
+
+    // Notify app components
     window.dispatchEvent(new Event('domoBrandingChanged'));
 
-    // Mostrar feedback explícito ao usuário de que as alterações foram salvas
-    alert("Configurações e marca salvas com sucesso!");
+    setTimeout(() => {
+      setSavingStatus('idle');
+      setSavingProgress(0);
+    }, 4000);
   };
 
-  return { nome, cor, logo, slogan, slug, email, loading, salvar };
+  return {
+    nome,
+    cor,
+    corSecundaria,
+    logo,
+    slogan,
+    slug,
+    email,
+    loading,
+    savingStatus,
+    savingProgress,
+    errorMessage,
+    salvar
+  };
 }
+
