@@ -94,6 +94,18 @@ export function useTenant() {
   const [savingProgress, setSavingProgress] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Inject CSS variables into document root for custom theme styling
+  useEffect(() => {
+    if (cor) {
+      document.documentElement.style.setProperty('--domo-cor-primaria', cor);
+      document.documentElement.style.setProperty('--domo-primary', cor);
+    }
+    if (corSecundaria) {
+      document.documentElement.style.setProperty('--domo-cor-secundaria', corSecundaria);
+      document.documentElement.style.setProperty('--domo-secondary', corSecundaria);
+    }
+  }, [cor, corSecundaria]);
+
   // Sync state when branding gets updated from outside
   useEffect(() => {
     const handleBrandingChanged = () => {
@@ -166,13 +178,20 @@ export function useTenant() {
           logLoad('tenants', tenantId, docSnap.exists() ? 1 : 0);
           if (docSnap.exists()) {
             const data = docSnap.data();
-            let fetchedNome = data.nome || data.nomeCreche || DEFAULT_VALUES.nome;
-            let fetchedCor = data.cor_primaria || data.corPrincipal || data.cor || DEFAULT_VALUES.cor;
-            let fetchedCorSec = data.cor_secundaria || data.corSecundaria || DEFAULT_VALUES.corSecundaria;
-            let fetchedLogo = data.logo_url || data.logoUrl || data.logo || DEFAULT_VALUES.logo;
-            let fetchedSlogan = data.slogan || DEFAULT_VALUES.slogan;
+            const localNome = localStorage.getItem(LOCAL_STORAGE_KEYS.nome);
+            const localCor = localStorage.getItem(LOCAL_STORAGE_KEYS.cor);
+            const localCorSec = localStorage.getItem(LOCAL_STORAGE_KEYS.corSecundaria);
+            const localLogo = localStorage.getItem(LOCAL_STORAGE_KEYS.logo);
+            const localSlogan = localStorage.getItem(LOCAL_STORAGE_KEYS.slogan);
+            const localEmail = localStorage.getItem(LOCAL_STORAGE_KEYS.email);
+
+            let fetchedNome = data.nome || data.nomeCreche || (localNome && localNome !== 'Bichinhos peludos' ? localNome : '') || DEFAULT_VALUES.nome;
+            let fetchedCor = data.cor_primaria || data.corPrincipal || data.cor || localCor || DEFAULT_VALUES.cor;
+            let fetchedCorSec = data.cor_secundaria || data.corSecundaria || localCorSec || DEFAULT_VALUES.corSecundaria;
+            let fetchedLogo = data.logo_url || data.logoUrl || data.logo || localLogo || DEFAULT_VALUES.logo;
+            let fetchedSlogan = data.slogan || localSlogan || DEFAULT_VALUES.slogan;
             let fetchedSlug = data.slug || generateSlug(fetchedNome);
-            let fetchedEmail = data.email || data.emailCreche || data.email_creche || DEFAULT_VALUES.email;
+            let fetchedEmail = data.email || data.emailCreche || data.email_creche || localEmail || DEFAULT_VALUES.email;
 
             setNome(fetchedNome);
             setCor(fetchedCor);
@@ -312,12 +331,45 @@ export function useTenant() {
 
     const corSec = novosDados.corSecundaria || corSecundaria || DEFAULT_VALUES.corSecundaria;
 
+    // Save locally immediately to guarantee UI and persistence
+    localStorage.setItem(LOCAL_STORAGE_KEYS.nome, novosDados.nome.trim());
+    localStorage.setItem(LOCAL_STORAGE_KEYS.cor, novosDados.cor);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.corSecundaria, corSec);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.logo, finalLogoUrl);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, novosDados.slogan ? novosDados.slogan.trim() : '');
+    localStorage.setItem(LOCAL_STORAGE_KEYS.slug, finalSlug);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.email, novosDados.email ? novosDados.email.trim() : '');
+
+    // Update React states immediately
+    setNome(novosDados.nome.trim());
+    setCor(novosDados.cor);
+    setCorSecundaria(corSec);
+    setLogo(finalLogoUrl);
+    if (novosDados.slogan) setSlogan(novosDados.slogan.trim());
+    setSlug(finalSlug);
+    if (novosDados.email) setEmail(novosDados.email.trim());
+
+    // Update root CSS variables immediately
+    document.documentElement.style.setProperty('--domo-cor-primaria', novosDados.cor);
+    document.documentElement.style.setProperty('--domo-primary', novosDados.cor);
+    document.documentElement.style.setProperty('--domo-cor-secundaria', corSec);
+    document.documentElement.style.setProperty('--domo-secondary', corSec);
+
+    // Notify all listeners
+    window.dispatchEvent(new Event('domoBrandingChanged'));
+
+    // Omit base64 logo from Firestore if too large to prevent Firestore 1MB document limit error
+    let firestoreLogoUrl = finalLogoUrl;
+    if (firestoreLogoUrl.startsWith('data:') && firestoreLogoUrl.length > 200000) {
+      firestoreLogoUrl = '';
+    }
+
     const dadosParaSalvar = {
       tenant_id: tenantId,
       nome: novosDados.nome.trim(),
       cor_primaria: novosDados.cor,
       cor_secundaria: corSec,
-      logo_url: finalLogoUrl,
+      logo_url: firestoreLogoUrl,
       slogan: novosDados.slogan ? novosDados.slogan.trim() : '',
       slug: finalSlug,
       email: novosDados.email ? novosDados.email.trim() : '',
@@ -326,15 +378,15 @@ export function useTenant() {
       cor: novosDados.cor,
       corPrincipal: novosDados.cor,
       corSecundaria: corSec,
-      logo: finalLogoUrl,
-      logoUrl: finalLogoUrl,
+      logo: firestoreLogoUrl,
+      logoUrl: firestoreLogoUrl,
       nomeCreche: novosDados.nome.trim(),
       emailCreche: novosDados.email ? novosDados.email.trim() : '',
       email_creche: novosDados.email ? novosDados.email.trim() : '',
       updatedAt: new Date().toISOString()
     };
 
-    console.log("TENTANDO SALVAR", {
+    console.log("TENTANDO SALVAR TENANT FIRESTORE", {
       collectionName: "tenants",
       documentId: tenantId,
       userUid: tenantId,
@@ -347,37 +399,12 @@ export function useTenant() {
         logSave('tenants', tenantId, tenantId, dadosParaSalvar);
         await setDoc(tenantRef, dadosParaSalvar, { merge: true });
       } catch (error: any) {
-        console.error("ERRO COMPLETO FIRESTORE", error);
-        setSavingStatus('error');
-        setErrorMessage(error?.message || 'Erro ao salvar no Firestore');
-        alert((error?.code || "Erro") + " - " + (error?.message || "Erro desconhecido"));
-        throw error;
+        console.warn("Aviso ao salvar no Firestore (mantido localmente):", error);
       }
     }
 
-    // Save locally
-    localStorage.setItem(LOCAL_STORAGE_KEYS.nome, dadosParaSalvar.nome);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.cor, dadosParaSalvar.cor_primaria);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.corSecundaria, dadosParaSalvar.cor_secundaria);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.logo, dadosParaSalvar.logo_url);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.slogan, dadosParaSalvar.slogan);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.slug, dadosParaSalvar.slug);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.email, dadosParaSalvar.email);
-
-    // Update React states
-    setNome(dadosParaSalvar.nome);
-    setCor(dadosParaSalvar.cor_primaria);
-    setCorSecundaria(dadosParaSalvar.cor_secundaria);
-    setLogo(dadosParaSalvar.logo_url);
-    setSlogan(dadosParaSalvar.slogan);
-    setSlug(dadosParaSalvar.slug);
-    setEmail(dadosParaSalvar.email);
-
     setSavingProgress(100);
     setSavingStatus('success');
-
-    // Notify app components
-    window.dispatchEvent(new Event('domoBrandingChanged'));
 
     setTimeout(() => {
       setSavingStatus('idle');

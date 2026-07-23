@@ -45,11 +45,11 @@ service cloud.firestore {
 
     // Pets collection
     match /pets/{petId} {
-      allow get: if loggedIn() && isMember(resource.data.tenant_id);
-      allow list: if loggedIn() && isMember(resource.data.tenant_id);
-      allow create: if loggedIn() && isMember(request.resource.data.tenant_id);
-      allow update: if loggedIn() && isMember(request.resource.data.tenant_id) && (resource.data.tenant_id == request.auth.uid || !('tenant_id' in resource.data));
-      allow delete: if loggedIn() && isOwnerOrAdmin(resource.data.tenant_id);
+      allow get: if loggedIn() && (isMember(resource.data.tenant_id) || isMember(resource.data.tenantId));
+      allow list: if loggedIn() && (isMember(resource.data.tenant_id) || isMember(resource.data.tenantId));
+      allow create: if loggedIn() && (isMember(request.resource.data.tenant_id) || isMember(request.resource.data.tenantId));
+      allow update: if loggedIn() && (isMember(resource.data.tenant_id) || isMember(resource.data.tenantId)) && (isMember(request.resource.data.tenant_id) || isMember(request.resource.data.tenantId));
+      allow delete: if loggedIn() && (isMember(resource.data.tenant_id) || isMember(resource.data.tenantId));
     }
 
     // Subcollections of pets (timeline, moments, boletins) are protected!

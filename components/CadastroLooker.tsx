@@ -92,6 +92,7 @@ Object.entries(headerAliases).forEach(([field, aliases]) => {
 
 const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSavePet, loadPetsFromFirestore }) => {
   const navigate = useNavigate();
+  const { nome: domoNome, cor: domoCor, corSecundaria: domoCorSec } = useTenant();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'alergia' | 'doenca'>('all');
   const [petToDelete, setPetToDelete] = useState<Pet | null>(null);
@@ -102,6 +103,97 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
   const [pendentes, setPendentes] = useState<any[]>([]);
   const [editingPending, setEditingPending] = useState<any | null>(null);
   const [editingPendingIndex, setEditingPendingIndex] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleExportPetsExcel = () => {
+    if (!pets || pets.length === 0) {
+      alert('Nenhum pet cadastrado para baixar.');
+      return;
+    }
+    try {
+      const dataToExport = pets.map(pet => ({
+        'ID': pet.id || '',
+        'Nome do Pet': pet.pet_nome || '',
+        'Tutor': pet.tutor_nome || '',
+        'Telefone / WhatsApp': pet.telefone || '',
+        'Raça': pet.raca || '',
+        'Peso (kg)': pet.peso_pet || '',
+        'Escala / Dias': pet.dia_semana || '',
+        'Alimentação': pet.tipo_alimentacao || '',
+        'Comportamento Alimentar': pet.comportamento_alimentar || '',
+        'Alergias / Restrições': pet.alimentos_proibidos || '',
+        'Doenças / Cuidados': pet.doencas_cuidados || '',
+        'Medicamentos': pet.uso_medicamentos || '',
+        'Observações': pet.observacoes || '',
+        'Data de Aniversário': pet.data_aniversario || ''
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Pets');
+
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `DOMO_Pets_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("Erro ao baixar em Excel, tentando CSV:", err);
+      handleExportPetsCSV();
+    }
+  };
+
+  const handleExportPetsCSV = () => {
+    if (!pets || pets.length === 0) {
+      alert('Nenhum pet cadastrado para baixar.');
+      return;
+    }
+    const headers = ['ID', 'Nome do Pet', 'Tutor', 'Telefone', 'Raça', 'Peso (kg)', 'Escala / Dias', 'Alimentação', 'Alergias', 'Doenças', 'Medicamentos', 'Observações'];
+    const rows = pets.map(pet => [
+      pet.id || '',
+      pet.pet_nome || '',
+      pet.tutor_nome || '',
+      pet.telefone || '',
+      pet.raca || '',
+      pet.peso_pet || '',
+      pet.dia_semana || '',
+      pet.tipo_alimentacao || '',
+      pet.alimentos_proibidos || '',
+      pet.doencas_cuidados || '',
+      pet.uso_medicamentos || '',
+      pet.observacoes || ''
+    ]);
+
+    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `DOMO_Pets_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRefreshPets = async () => {
+    if (loadPetsFromFirestore) {
+      setIsRefreshing(true);
+      try {
+        const loaded = await loadPetsFromFirestore();
+        alert(`Sincronização concluída! ${loaded.length} pets carregados da nuvem.`);
+      } catch (err: any) {
+        alert('Erro ao sincronizar pets do Firestore: ' + (err.message || String(err)));
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+  };
 
   // Import spreadsheet states
   const [showImportModal, setShowImportModal] = useState(false);
@@ -270,17 +362,13 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
         console.log('[Importador] Colunas mapeadas:', recognizedLabels);
 
         const hasName = mappedIndices.some(m => m.field === 'pet_nome');
-        const hasTutor = mappedIndices.some(m => m.field === 'tutor_nome');
-        const hasPhone = mappedIndices.some(m => m.field === 'telefone');
 
         const missingRequired: string[] = [];
         if (!hasName) missingRequired.push('Nome do Pet');
-        if (!hasTutor) missingRequired.push('Nome do tutor');
-        if (!hasPhone) missingRequired.push('Telefone');
 
         const errorDetails: string[] = [];
         if (missingRequired.length > 0) {
-          const errMsg = `Colunas obrigatórias ausentes na planilha: ${missingRequired.join(', ')}`;
+          const errMsg = `Coluna obrigatória ausente na planilha: ${missingRequired.join(', ')}`;
           console.error('[Importador] Erro de validação de colunas:', errMsg);
           errorDetails.push(errMsg);
         }
@@ -332,9 +420,14 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
           tempPet.id = petId;
 
           const rowErrors: string[] = [];
-          if (!tempPet.pet_nome) rowErrors.push(`Linha ${rowNum}: Nome do Pet em branco.`);
-          if (!tempPet.tutor_nome) rowErrors.push(`Linha ${rowNum}: Nome do tutor em branco.`);
-          if (!tempPet.telefone) rowErrors.push(`Linha ${rowNum}: Telefone em branco.`);
+          if (!tempPet.pet_nome) {
+            rowErrors.push(`Linha ${rowNum}: Nome do Pet em branco.`);
+          } else {
+            // Garantir valores padrão para importar até 200+ pets sem rejeitar registros parciais
+            if (!tempPet.tutor_nome) tempPet.tutor_nome = 'Tutor Não Informado';
+            if (!tempPet.telefone) tempPet.telefone = '-';
+            if (!tempPet.raca) tempPet.raca = 'SRD';
+          }
 
           if (rowErrors.length > 0 || missingRequired.length > 0) {
             invalidRows.push(tempPet);
@@ -438,7 +531,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
     const details: string[] = [];
 
     const petsToImport = importPreview.rows;
-    const CHUNK_SIZE = 20;
+    const CHUNK_SIZE = 25;
 
     for (let i = 0; i < petsToImport.length; i += CHUNK_SIZE) {
       // Verificação em tempo real de cancelamento pelo usuário antes de processar o lote
@@ -639,8 +732,6 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
     setImportStep('importacaoConcluida');
     setIsImporting(false);
   };
-
-  const { nome: domoNome, cor: domoCor, slogan: domoSlogan } = useTenant();
 
   useEffect(() => {
     let active = true;
@@ -1321,6 +1412,33 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
             <span>Importar planilha</span>
           </button>
 
+          <button 
+            type="button"
+            onClick={handleExportPetsExcel}
+            className="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-600/10 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+          >
+            <span>📥 Baixar Pets (Excel)</span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={handleExportPetsCSV}
+            className="px-4 py-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+          >
+            <span>📄 Baixar Pets (CSV)</span>
+          </button>
+
+          {loadPetsFromFirestore && (
+            <button 
+              type="button"
+              onClick={handleRefreshPets}
+              disabled={isRefreshing}
+              className="px-5 py-3.5 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-sky-600/10 transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              <span>{isRefreshing ? '🔄 Atualizando...' : '🔄 Sincronizar da Nuvem'}</span>
+            </button>
+          )}
+
 
         </div>
 
@@ -1841,7 +1959,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
               {importStep === 'idle' && (
                 <div className="space-y-6">
                   <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 text-emerald-800 text-xs font-semibold leading-relaxed">
-                    “Envie um arquivo exportado do Google Sheets em CSV ou XLSX. O sistema vai cadastrar ou atualizar os pets automaticamente.”
+                    “Envie um arquivo exportado do Google Sheets em CSV ou XLSX. O sistema suporta a importação de 200 ou mais pets e os cadastra/atualiza no banco de dados automaticamente.”
                   </div>
 
                   <div
@@ -1859,7 +1977,7 @@ const CadastroLooker: React.FC<CadastroLookerProps> = ({ pets, onDeletePet, onSa
                     <Upload size={40} className="text-slate-400 mb-4 animate-bounce" />
                     <p className="text-xs font-black text-slate-700 uppercase tracking-wider">Arraste a planilha aqui</p>
                     <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">ou clique para selecionar do computador</p>
-                    <p className="text-[9px] text-slate-400 mt-3 font-semibold">Suporta arquivos .CSV ou .XLSX</p>
+                    <p className="text-[9px] text-slate-400 mt-3 font-semibold">Suporta arquivos .CSV ou .XLSX (Aceita 200+ pets em lotes)</p>
                     <input
                       type="file"
                       id="import-file-input"

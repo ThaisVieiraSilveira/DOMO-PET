@@ -5,6 +5,7 @@ import { db, auth, isFirebaseConfigured } from '../firebase';
 import { Pet } from '../../types';
 import { fetchPets } from '../../services/api';
 import { ensureAuthenticated, logSave, logLoad } from '../../utils/firestore';
+import { resolveTenantIdForUser } from '../utils/tenantResolver';
 
 const LOCAL_STORAGE_KEYS = {
   pets: 'domo_master_pets',
@@ -53,23 +54,41 @@ export function usePets() {
 
       try {
         setLoading(true);
+        const tenantId = await resolveTenantIdForUser(user.uid);
         const petsRef = collection(db, 'pets');
-        const q = query(petsRef, where('tenant_id', '==', user.uid));
+        const q = query(petsRef, where('tenant_id', '==', tenantId));
 
         unsubscribeSnapshot = onSnapshot(
           q,
           async (snapshot) => {
             if (!active) return;
-            const fetchedPets: Pet[] = [];
+            let fetchedPets: Pet[] = [];
             snapshot.forEach((docSnap) => {
               const data = docSnap.data();
               fetchedPets.push({
                 ...data,
-                id: docSnap.id, // Ensure document ID is used as the pet ID
+                id: docSnap.id,
               } as Pet);
             });
 
-            logLoad('pets', user.uid, fetchedPets.length);
+            // If empty with tenant_id, check camelCase tenantId as fallback
+            if (fetchedPets.length === 0) {
+              try {
+                const qAlt = query(petsRef, where('tenantId', '==', tenantId));
+                const altSnap = await getDocs(qAlt);
+                altSnap.forEach((docSnap) => {
+                  const data = docSnap.data();
+                  fetchedPets.push({
+                    ...data,
+                    id: docSnap.id,
+                  } as Pet);
+                });
+              } catch (altErr) {
+                console.warn("Fallback query tenantId:", altErr);
+              }
+            }
+
+            logLoad('pets', tenantId, fetchedPets.length);
 
             if (fetchedPets.length > 0) {
               setPets(fetchedPets);
@@ -80,39 +99,29 @@ export function usePets() {
                 console.error("Erro ao salvar cache de pets no localStorage:", err);
               }
             } else {
-              // Firestore of this tenant is empty! Check if we can migrate existing local storage pets
+              // Check if we can migrate existing local storage pets
               try {
                 const cached = localStorage.getItem(LOCAL_STORAGE_KEYS.pets);
                 const localPets: Pet[] = cached ? JSON.parse(cached) : [];
                 
                 if (localPets.length > 0) {
-                  // Automatic migration of local storage pets to the newly authenticated cloud tenant!
-                  console.log(`Migrando ${localPets.length} pets locais para a nuvem...`);
+                  console.log(`Migrando ${localPets.length} pets locais para a nuvem (tenant ${tenantId})...`);
                   for (const localPet of localPets) {
                     const petDocRef = doc(db, 'pets', localPet.id);
                     const migrationData = {
                       ...localPet,
-                      tenant_id: user.uid,
+                      tenant_id: tenantId,
+                      tenantId: tenantId,
                       criado_em: new Date().toISOString()
                     };
-                    console.log("TENTANDO SALVAR", {
-                      collectionName: "pets",
-                      documentId: localPet.id,
-                      userUid: user.uid,
-                      payload: migrationData
-                    });
-                    logSave('pets', localPet.id, user.uid, migrationData);
+                    logSave('pets', localPet.id, tenantId, migrationData);
                     try {
                       await setDoc(petDocRef, migrationData);
                     } catch (error: any) {
-                      console.error("ERRO COMPLETO FIRESTORE", error);
-                      alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
-                      throw error;
+                      console.error("ERRO MIGRACAO FIRESTORE PETS", error);
                     }
                   }
-                  // Let onSnapshot pick up the newly uploaded pets automatically
                 } else {
-                  // Since they are logged in, we do NOT load mock data. The pets list remains empty.
                   setPets([]);
                   setLoading(false);
                   localStorage.setItem(LOCAL_STORAGE_KEYS.pets, JSON.stringify([]));
@@ -144,8 +153,8 @@ export function usePets() {
   }, []);
 
   const addPet = async (petData: Omit<Pet, 'id'> & { id?: string }) => {
-    const tenantId = ensureAuthenticated();
-    // We generate a deterministic ID if not provided, or a generic clean ID using Firestore or random ID.
+    const userUid = ensureAuthenticated();
+    const tenantId = await resolveTenantIdForUser(userUid);
     const newId = petData.id || doc(collection(db, 'pets')).id || Math.random().toString(36).substr(2, 9);
     
     const newPet: Pet = {
@@ -156,17 +165,17 @@ export function usePets() {
     const documentData = {
       ...newPet,
       tenant_id: tenantId,
+      tenantId: tenantId,
       criado_em: new Date().toISOString(),
     };
 
-    console.log("TENTANDO SALVAR", {
+    console.log("TENTANDO SALVAR PET", {
       collectionName: "pets",
       documentId: newId,
-      userUid: tenantId,
+      tenantId,
       payload: documentData
     });
 
-    // 1. Save to Firestore
     if (isFirebaseConfigured && db) {
       try {
         const petDocRef = doc(db, 'pets', newId);
@@ -179,7 +188,6 @@ export function usePets() {
       }
     }
 
-    // 2. Only upon success, save in state & localStorage (or if firebase not configured)
     const updatedPets = [...pets.filter((p) => p.id !== newId), newPet];
     setPets(updatedPets);
     try {
@@ -192,9 +200,9 @@ export function usePets() {
   };
 
   const updatePet = async (petId: string, updatedFields: Partial<Pet>) => {
-    const tenantId = ensureAuthenticated();
+    const userUid = ensureAuthenticated();
+    const tenantId = await resolveTenantIdForUser(userUid);
     
-    // Find current pet
     const currentPet = pets.find((p) => p.id === petId);
     if (!currentPet) return;
 
@@ -207,30 +215,22 @@ export function usePets() {
     const dataToSave = {
       ...updatedPet,
       tenant_id: tenantId,
+      tenantId: tenantId,
       updatedAt: new Date().toISOString(),
     };
 
-    console.log("TENTANDO SALVAR", {
-      collectionName: "pets",
-      documentId: petId,
-      userUid: tenantId,
-      payload: dataToSave
-    });
-
-    // 1. Save in Firestore
     if (isFirebaseConfigured && db) {
       try {
         const petDocRef = doc(db, 'pets', petId);
         logSave('pets', petId, tenantId, dataToSave);
         await setDoc(petDocRef, dataToSave, { merge: true });
       } catch (error: any) {
-        console.error("ERRO COMPLETO FIRESTORE", error);
+        console.error("ERRO COMPLETO FIRESTORE UPDATE PET", error);
         alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }
 
-    // 2. Only upon success, save in state & localStorage (or if firebase not configured)
     const updatedPets = pets.map((p) => (p.id === petId ? updatedPet : p));
     setPets(updatedPets);
     try {
@@ -243,57 +243,43 @@ export function usePets() {
   };
 
   const deletePet = async (petId: string) => {
-    const tenantId = ensureAuthenticated();
+    const userUid = ensureAuthenticated();
+    const tenantId = await resolveTenantIdForUser(userUid);
 
-    console.log("TENTANDO SALVAR (DELETAR)", {
-      collectionName: "pets",
-      documentId: petId,
-      userUid: tenantId,
-      payload: null
-    });
-
-    // 1. Remove from Firestore first
     if (isFirebaseConfigured && db) {
       try {
         const petDocRef = doc(db, 'pets', petId);
         console.log(`Deletando pet ${petId} do Firestore pelo tenant ${tenantId}`);
         await deleteDoc(petDocRef);
       } catch (error: any) {
-        console.error("ERRO COMPLETO FIRESTORE", error);
+        console.error("ERRO FIRESTORE DELETE PET", error);
         alert((error?.code || "Erro") + " - " + (error?.message || String(error)));
         throw error;
       }
     }
 
-    // 2. Only upon success, remove from local state & localStorage
     const updatedPets = pets.filter((p) => p.id !== petId);
     setPets(updatedPets);
     try {
       localStorage.setItem(LOCAL_STORAGE_KEYS.pets, JSON.stringify(updatedPets));
-      
-      // Keep track of deleted items to sync if needed for legacy components
-      const storedDeleted = localStorage.getItem('domo_deleted_pets');
-      const deletedIds: string[] = storedDeleted ? JSON.parse(storedDeleted) : [];
-      if (!deletedIds.includes(petId)) {
-        localStorage.setItem('domo_deleted_pets', JSON.stringify([...deletedIds, petId]));
-      }
     } catch (e) {
       console.error(e);
     }
   };
 
   const loadPetsFromFirestore = async () => {
-    const tenantId = ensureAuthenticated();
+    const userUid = ensureAuthenticated();
+    const tenantId = await resolveTenantIdForUser(userUid);
     if (!isFirebaseConfigured || !db) {
       console.warn("Firebase não configurado ao tentar recarregar pets.");
-      return [];
+      return pets;
     }
     try {
-      console.log("Buscando pets com tenant_id:", tenantId);
+      console.log("Buscando pets no Firestore para tenantId:", tenantId);
       const petsRef = collection(db, 'pets');
       const q = query(petsRef, where('tenant_id', '==', tenantId));
       const querySnapshot = await getDocs(q);
-      const fetchedPets: Pet[] = [];
+      let fetchedPets: Pet[] = [];
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         fetchedPets.push({
@@ -301,6 +287,19 @@ export function usePets() {
           id: docSnap.id,
         } as Pet);
       });
+
+      if (fetchedPets.length === 0) {
+        const qAlt = query(petsRef, where('tenantId', '==', tenantId));
+        const altSnap = await getDocs(qAlt);
+        altSnap.forEach((docSnap) => {
+          const data = docSnap.data();
+          fetchedPets.push({
+            ...data,
+            id: docSnap.id,
+          } as Pet);
+        });
+      }
+
       logLoad('pets', tenantId, fetchedPets.length);
       setPets(fetchedPets);
       localStorage.setItem(LOCAL_STORAGE_KEYS.pets, JSON.stringify(fetchedPets));
@@ -313,3 +312,4 @@ export function usePets() {
 
   return { pets, loading, addPet, updatePet, deletePet, loadPetsFromFirestore };
 }
+

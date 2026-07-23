@@ -34,12 +34,13 @@ const Settings: React.FC<SettingsProps> = ({
 // Navigation Tabs: 'brand' (Ajustes de Marca), 'tech' (Conectividade e Relatórios) or 'activities' (Atividades)
   const [activeTab, setActiveTab] = useState<'brand' | 'tech' | 'activities'>('brand');
 
-  const { nome, cor, logo, slogan, email, salvar, loading: tenantLoading } = useTenant();
+  const { nome, cor, corSecundaria, logo, slogan, email, salvar, loading: tenantLoading } = useTenant();
 
   // White-Label State variables
   const [domoNome, setDomoNome] = useState('DOMO');
   const [domoSlogan, setDomoSlogan] = useState('Gestão canina de ponta a ponta');
   const [domoCor, setDomoCor] = useState('#085041');
+  const [domoCorSecundaria, setDomoCorSecundaria] = useState('#0ea5e9');
   const [domoLogo, setDomoLogo] = useState('');
   const [domoEmail, setDomoEmail] = useState('');
   
@@ -236,11 +237,12 @@ const Settings: React.FC<SettingsProps> = ({
       setDomoNome(nome);
       setDomoSlogan(slogan);
       setDomoCor(cor);
+      setDomoCorSecundaria(corSecundaria || '#0ea5e9');
       setDomoLogo(logo || '');
       setDomoEmail(email || '');
       setIsLoading(false);
     }
-  }, [nome, cor, logo, slogan, email, tenantLoading]);
+  }, [nome, cor, corSecundaria, logo, slogan, email, tenantLoading]);
 
   useEffect(() => {
     setLocalZApi(zApiConfig);
@@ -272,12 +274,17 @@ const Settings: React.FC<SettingsProps> = ({
     fetchCommunityGroupLink();
   }, []);
 
-  // Handle Logo Upload and convert to Base64 (so it fits inside localStorage perfectly)
+  // Handle Logo Upload
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.type !== 'image/png') {
-        alert('Formatos inválidos! Por favor, utilize apenas arquivos de imagem no formato PNG.');
+      const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
+      if (!allowed.includes(file.type)) {
+        alert('Formato de imagem não suportado. Por favor utilize PNG, JPG, WebP ou SVG.');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        alert('A imagem deve ter no máximo 2MB.');
         return;
       }
       
@@ -305,6 +312,7 @@ const Settings: React.FC<SettingsProps> = ({
     await salvar({
       nome: domoNome.trim(),
       cor: domoCor,
+      corSecundaria: domoCorSecundaria,
       logo: domoLogo,
       slogan: domoSlogan.trim(),
       email: domoEmail.trim()
@@ -647,35 +655,67 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-2 max-w-xs pt-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Ou digite código HEX personalizado</label>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-400 text-lg">#</span>
-                  <input
-                    type="text"
-                    value={domoCor.replace('#', '')}
-                    onChange={(e) => {
-                      const typed = e.target.value.trim().substring(0, 6);
-                      setDomoCor('#' + typed);
-                    }}
-                    placeholder="085041"
-                    className="p-3 bg-[#F9FBFA] border-2 border-[#E7EFEA] rounded-xl font-mono font-bold text-slate-700 outline-none focus:border-emerald-300 transition-all text-sm"
-                  />
-                  <div 
-                    style={{ backgroundColor: domoCor }} 
-                    className="w-10 h-10 rounded-xl border border-slate-100 shadow-inner block"
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Cor Principal (HEX)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={domoCor.startsWith('#') ? domoCor : '#' + domoCor}
+                      onChange={(e) => setDomoCor(e.target.value)}
+                      className="w-12 h-12 rounded-xl cursor-pointer border-0 p-0 bg-transparent shadow-md shrink-0"
+                    />
+                    <div className="flex items-center gap-1 bg-[#F9FBFA] border-2 border-[#E7EFEA] rounded-xl p-2.5 flex-1">
+                      <span className="font-bold text-slate-400 text-sm">#</span>
+                      <input
+                        type="text"
+                        value={domoCor.replace('#', '')}
+                        onChange={(e) => {
+                          const typed = e.target.value.trim().substring(0, 6);
+                          setDomoCor('#' + typed);
+                        }}
+                        placeholder="085041"
+                        className="w-full bg-transparent font-mono font-bold text-slate-700 outline-none text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Cor Secundária (HEX)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={domoCorSecundaria.startsWith('#') ? domoCorSecundaria : '#' + domoCorSecundaria}
+                      onChange={(e) => setDomoCorSecundaria(e.target.value)}
+                      className="w-12 h-12 rounded-xl cursor-pointer border-0 p-0 bg-transparent shadow-md shrink-0"
+                    />
+                    <div className="flex items-center gap-1 bg-[#F9FBFA] border-2 border-[#E7EFEA] rounded-xl p-2.5 flex-1">
+                      <span className="font-bold text-slate-400 text-sm">#</span>
+                      <input
+                        type="text"
+                        value={domoCorSecundaria.replace('#', '')}
+                        onChange={(e) => {
+                          const typed = e.target.value.trim().substring(0, 6);
+                          setDomoCorSecundaria('#' + typed);
+                        }}
+                        placeholder="0EA5E9"
+                        className="w-full bg-transparent font-mono font-bold text-slate-700 outline-none text-sm"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Color preview bar */}
               <div className="space-y-2">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Visualização da Tom de Base</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Visualização da Paleta Ativa</p>
                 <div 
-                  className="w-full h-8 rounded-xl flex items-center justify-center text-white font-bold text-[10px] uppercase tracking-[0.25em] transition-all shadow-sm"
-                  style={{ backgroundColor: domoCor }}
+                  className="w-full h-10 rounded-2xl flex items-center justify-between px-6 text-white font-bold text-[10px] uppercase tracking-[0.2em] transition-all shadow-md"
+                  style={{ background: `linear-gradient(90deg, ${domoCor} 0%, ${domoCorSecundaria} 100%)` }}
                 >
-                  Paleta de Cor Ativa: {domoCor}
+                  <span>Principal: {domoCor}</span>
+                  <span>Secundária: {domoCorSecundaria}</span>
                 </div>
               </div>
             </div>
